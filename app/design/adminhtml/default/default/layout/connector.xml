@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <layout version="0.1.0">
-    <connector_adminhtml_settings_index>
+    <adminhtml_connectorsettings_index>
         <reference name="head">
             <action method="addItem">
                 <type>skin_js</type>
@@ -14,5 +14,5 @@
         <reference name="content">
             <block type="connector/adminhtml_settings_edit" name="settings"/>
         </reference>
-    </connector_adminhtml_settings_index>
+    </adminhtml_connectorsettings_index>
 </layout>

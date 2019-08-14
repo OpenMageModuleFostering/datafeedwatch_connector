@@ -2,28 +2,28 @@
 <config>
     <modules>
         <DataFeedWatch_Connector>
-            <version>0.2.16</version>
+            <version>0.2.18.12a</version>
         </DataFeedWatch_Connector>
     </modules>
     <admin>
         <routers>
-            <connector>
-                <use>admin</use>
+            <adminhtml>
                 <args>
-                    <module>DataFeedWatch_Connector</module>
-                    <frontName>connector</frontName>
+                    <modules>
+                        <connector after="Mage_Adminhtml">DataFeedWatch_Connector_Adminhtml</connector>
+                    </modules>
                 </args>
-            </connector>
+            </adminhtml>
         </routers>
     </admin>
     <adminhtml>
         <menu>
             <catalog translate="title" module="adminhtml">
                 <children>
-                    <connectorbackend translate="title" module="connector">
+                    <connector translate="title" module="connector">
                         <title>DataFeedWatch</title>
-                        <action>connector/adminhtml_settings</action>
-                    </connectorbackend>
+                        <action>adminhtml/connectorsettings</action>
+                    </connector>
                 </children>
             </catalog>
         </menu>
@@ -32,9 +32,9 @@
                 <admin>
                     <catalog>
                         <children>
-                            <connectorbackend translate="title" module="connector">
+                            <connector translate="title" module="connector">
                                 <title>DataFeedWatch</title>
-                            </connectorbackend>
+                            </connector>
                         </children>
                     </catalog>
                 </admin>
@@ -52,7 +52,20 @@
         <models>
             <connector>
                 <class>DataFeedWatch_Connector_Model</class>
+                <resourceModel>connector_resource</resourceModel>
             </connector>
+            <connector_resource>
+                <class>DataFeedWatch_Connector_Model_Resource</class>
+                <deprecatedNode>connector_mysql4</deprecatedNode>
+                <entities>
+                    <catalogrule_info>
+                        <table>datafeedwatch_catalogrule_info</table>
+                    </catalogrule_info>
+                    <salesrule_info>
+                        <table>datafeedwatch_salesrule_info</table>
+                    </salesrule_info>
+                </entities>
+            </connector_resource>
         </models>
         <helpers>
             <connector>
@@ -71,5 +84,34 @@
                 </setup>
             </datafeedwatch_connector_setup>
         </resources>
+        <events>
+            <catalogrule_rule_save_after>
+                <observers>
+                    <datafeedwatch_connector_save_catalogrule_date>
+                        <type>singleton</type>
+                        <class>DataFeedWatch_Connector_Model_Observer</class>
+                        <method>catalogruleRuleSaveAfter</method>
+                    </datafeedwatch_connector_save_catalogrule_date>
+                </observers>
+            </catalogrule_rule_save_after>
+            <salesrule_rule_save_after>
+                <observers>
+                    <datafeedwatch_connector_save_salesrule_date>
+                        <type>singleton</type>
+                        <class>DataFeedWatch_Connector_Model_Observer</class>
+                        <method>salesruleRuleSaveAfter</method>
+                    </datafeedwatch_connector_save_salesrule_date>
+                </observers>
+            </salesrule_rule_save_after>
+            <controller_action_postdispatch_adminhtml_promo_catalog_applyRules>
+                <observers>
+                    <datafeedwatch_connector_applyAll_catalogrule_date>
+                        <type>singleton</type>
+                        <class>DataFeedWatch_Connector_Model_Observer</class>
+                        <method>catalogruleRuleApplyAllAfter</method>
+                    </datafeedwatch_connector_applyAll_catalogrule_date>
+                </observers>
+            </controller_action_postdispatch_adminhtml_promo_catalog_applyRules>
+        </events>
     </global>
 </config>

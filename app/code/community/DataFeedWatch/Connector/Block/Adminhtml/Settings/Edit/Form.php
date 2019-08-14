@@ -23,11 +23,30 @@ class DataFeedWatch_Connector_Block_Adminhtml_Settings_Edit_Form extends Mage_Ad
         $required = Mage::helper('connector')->getRequiredAttributes();
         $additional = array();
         if(Mage::getStoreConfig('datafeedwatch/settings/attributes')){
-            $additional = Zend_Serializer::unserialize(Mage::getStoreConfig('datafeedwatch/settings/attributes'));
+            $additional = unserialize(Mage::getStoreConfig('datafeedwatch/settings/attributes'));
         }
         $data["required_attributes"] = array_keys($required);
         $data["additional_attributes"] = $additional;
 
+        $collection = Mage::getModel('catalog/product')->getCollection();
+        if($collection){
+            $product = $collection->getFirstItem();
+            $product = Mage::getModel('catalog/product')->load($product->getId());
+        }
+        $baseUrl = Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB);
+        $urlComment = '<br/><table>
+        <tr><td>Sample Product URL:</td><td>'.$baseUrl . $product->getUrlPath().'</td></tr>
+        <tr><td>Sample Full URL:</td><td>'.Mage::helper('connector')->getFullUrl($product).'</td></tr></table>';
+
+        $fieldset->addField('url_type','select', array(
+            'label' => Mage::helper('connector')->__('URL Type'),
+            'name' => 'url_type',
+            'values' => array(
+                '1' => 'Product URL',
+                '2' => 'Full URL'),
+            'after_element_html' => $urlComment
+        ));
+        $data["url_type"] = Mage::getStoreConfig('datafeedwatch/settings/url_type');
 
         $fieldset->addField('required_attributes', 'checkboxes',array(
             "label" => Mage::helper('connector')->__("Required Attributes"),
@@ -48,8 +67,6 @@ class DataFeedWatch_Connector_Block_Adminhtml_Settings_Edit_Form extends Mage_Ad
             "options" => $attributesList,
             "name" => "additional_attributes[]"
         ));
-
-
 
         $form->setValues($data);
 

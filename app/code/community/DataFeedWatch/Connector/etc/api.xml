@@ -27,6 +27,12 @@
                     <gmt_offset translate="title" module="connector">
                         <title>Retrieve datetime in GMT</title>
                     </gmt_offset>
+                    <updated_products translate="title" module="connector">
+                        <title>Retrieve products based on last update</title>
+                    </updated_products>
+                    <updated_product_count translate="title" module="connector">
+                        <title>Retrieve product count based on last update</title>
+                    </updated_product_count>
                 </methods>
             </datafeedwatch>
         </resources>

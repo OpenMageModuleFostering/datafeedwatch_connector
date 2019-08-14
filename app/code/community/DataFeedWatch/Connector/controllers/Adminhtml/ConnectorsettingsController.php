@@ -1,14 +1,19 @@
 <?php
 
-class DataFeedWatch_Connector_Adminhtml_SettingsController extends Mage_Adminhtml_Controller_Action{
+class DataFeedWatch_Connector_Adminhtml_ConnectorsettingsController extends Mage_Adminhtml_Controller_Action{
 
     public function indexAction(){
-
         if($this->_request->isPost()) {
             $additional_attributes = $this->_request->getParam('additional_attributes');
             if ($additional_attributes) {
-                Mage::getModel('core/config')->saveConfig('datafeedwatch/settings/attributes', Zend_Serializer::serialize($additional_attributes));
+                Mage::getModel('core/config')->saveConfig('datafeedwatch/settings/attributes', serialize($additional_attributes));
             }
+
+            $url_type = $this->_request->getParam('url_type');
+            if($url_type){
+                Mage::getModel('core/config')->saveConfig('datafeedwatch/settings/url_type', $url_type);
+            }
+
 
             Mage::getModel('core/config')->saveConfig('datafeedwatch/settings/ready', 1);
 
@@ -30,12 +35,14 @@ class DataFeedWatch_Connector_Adminhtml_SettingsController extends Mage_Adminhtm
     protected $lastname = 'DataFeedWatch';
     protected $email = 'magento@datafeedwatch.com';
     protected $register_url = 'https://my.datafeedwatch.com/platforms/magento/sessions/finalize';
+    protected $register_url_dev = 'https://my.preview.datafeedwatch.com/platforms/magento/sessions/finalize';
 
     /**
      * currently the same as $register_url
      * @var string
      */
     protected $redirect_url = 'https://my.datafeedwatch.com/';
+    protected $redirect_url_dev = 'https://my.preview.datafeedwatch.com/';
 
     public function createuserAction() {
 
@@ -68,7 +75,11 @@ class DataFeedWatch_Connector_Adminhtml_SettingsController extends Mage_Adminhtm
     }
 
     public function redirectAction(){
-        $this->getResponse()->setRedirect($this->redirect_url);
+        if (stristr(Mage::getUrl(),'http://datafeedwatch.stronazen.pl/')) {
+            $this->getResponse()->setRedirect($this->redirect_url_dev);
+        } else {
+            $this->getResponse()->setRedirect($this->redirect_url);
+        }
         return;
     }
 
@@ -82,7 +93,11 @@ class DataFeedWatch_Connector_Adminhtml_SettingsController extends Mage_Adminhtm
     }
 
     private function _registerUrl($api_key) {
-		return $this->register_url.'?shop='.Mage::getBaseUrl().'&token='.$api_key;
+        if (stristr(Mage::getUrl(),'http://datafeedwatch.stronazen.pl/')) {
+            return $this->register_url_dev.'?shop='.Mage::getBaseUrl().'&token='.$api_key;
+        } else {
+            return $this->register_url.'?shop='.Mage::getBaseUrl().'&token='.$api_key;
+        }
     }
 
     private function _createApiRole(){

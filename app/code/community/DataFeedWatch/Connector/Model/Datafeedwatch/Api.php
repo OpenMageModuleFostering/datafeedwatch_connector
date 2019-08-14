@@ -5,14 +5,16 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
     // category
     const CATEGORY_NAME_FIELD = 'name';
     const CATEGORY_SEPARATOR = ' > ';
-    public $categories = array();
 
-    public $storeId = 0;
     public $storeRootCategoryId = 2;
+
+    public $categories = array();
     public $storeCategories = array();
 
+    private $_versionInfo;
+
     /* has been tested with this EE version and works completely */
-    protected $_supportedEnterprise = array(
+    private $_supportedEnterprise = array(
         'major' => '1',
         'minor' => '13',
         'revision' => '0',
@@ -20,20 +22,27 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         'stability' => '',
         'number' => '',
     );
+    private $_isSupportedEnterprise = false;
+
 
     public function __construct()
     {
-        $this->productCategories = array();
         ini_set('memory_limit', '1024M');
     }
 
-    /* API method */
+    /**
+     * @return array
+     */
     public function stores()
     {
+        $returned = array();
         foreach (Mage::app()->getWebsites() as $website) {
+            /* @var $website Mage_Core_Model_Website */
             foreach ($website->getGroups() as $group) {
+                /* @var $group Mage_Core_Model_Store_Group */
                 $stores = $group->getStores();
                 foreach ($stores as $store) {
+                    /* @var $store Mage_Core_Model_Store */
                     $returned[$store->getCode()] = array(
                         'Website' => $website->getName(),
                         'Store' => $group->getName(),
@@ -45,211 +54,100 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         return $returned;
     }
 
-    /* API method */
+    /**
+     * @param array $options
+     * @return mixed
+     * @throws Mage_Api_Exception
+     */
     public function product_ids($options = array())
     {
+        $dataFeedWatchHelper = Mage::helper('connector');
+        /* @var $dataFeedWatchHelper DataFeedWatch_Connector_Helper_Data */
+
         if (!array_key_exists('page', $options)) {
-            $options['page'] = 1;
+            $options['page'] = 0;
         }
 
         if (!array_key_exists('per_page', $options)) {
             $options['per_page'] = 100;
         }
+        $collection = $dataFeedWatchHelper->prepareCollection($options)->setPage($options['page'],$options['per_page']);
 
-        $collection = $this->_prepareCollection($options);
+        if(count($collection)>0){
+            foreach($collection as $product){
 
-        return $collection->getAllIds($options['per_page'], $options['page']);
+                if ($product->getTypeId() == "simple") {
+                    $parentIds = Mage::getModel('catalog/product_type_grouped')->getParentIdsByChild($product->getId());
+                    if (!$parentIds) {
+                        $parentIds = Mage::getModel('catalog/product_type_configurable')->getParentIdsByChild($product->getId());
+                        if (isset($parentIds[0])) {
+                            $isConfigurable = true;
+                        }
+                    }
+
+                    if (isset($parentIds[0])) {
+                        $parent_product = Mage::getModel('catalog/product')->load($parentIds[0]);
+                        /* @var $parent_product Mage_Catalog_Model_Product_Type_Configurable */
+                        while (!$parent_product->getId()) {
+                            if (count($parentIds) > 1) {
+                                //parent not found, remove and retry with next one
+                                array_shift($parentIds);
+                                $parent_product = Mage::getModel('catalog/product')->load($parentIds[0]);
+                            } else {
+                                break;
+                            }
+                        }
+
+                        //do not include variant products that will not be fetched by products method
+                        if ($dataFeedWatchHelper->shouldSkipProduct($product,$parent_product)) {
+                            continue;
+                        }
+                    }
+                    $products[] = $product->getId();
+                }else {
+                    $products[] = $product->getId();
+                }
+            }
+            return array_values($products);
+        }
+
+        return array();
     }
 
-    /* API method */
+    /**
+     * @return string
+     */
     public function version()
     {
         return (string)Mage::getConfig()->getNode('modules/DataFeedWatch_Connector')->version;
     }
 
-    /* API method */
+    /**
+     * @param array $options
+     * @return int
+     * @throws Mage_Api_Exception
+     */
     public function product_count($options = array())
     {
+        $products = array();
+        $dataFeedWatchHelper = Mage::helper('connector');
+        /* var $dataFeedWatchHelper DataFeedWatch_Connector_Helper_Data */
+        $collection = $dataFeedWatchHelper->prepareCollection($options);
 
-        $collection = $this->_prepareCollection($options);
+        foreach($collection as $product){
 
-        $apiHelper = Mage::helper('api');
-        if (method_exists($apiHelper, 'parseFilters')) {
-            $filters = $apiHelper->parseFilters($options, $this->_filtersMap);
-        } else {
-            /* added to support older releases without parseFilters */
-            $dataFeedWatchHelper = Mage::helper('connector');
-            $filters = $dataFeedWatchHelper->parseFiltersReplacement($options, $this->_filtersMap);
-        }
-
-        try {
-            foreach ($filters as $field => $value) {
-                //ignore status when flat catalog is enabled
-                if ($field == 'status' && Mage::helper('catalog/product_flat')->isEnabled()) {
-                    continue;
-                }
-                $fieldToIgnore = array('store', 'page', 'per_page');
-                //ignore fields when flat catalog is not enabled
-                if (in_array($field, $fieldToIgnore) && !Mage::helper('catalog/product_flat')->isEnabled()) {
-                    continue;
-                }
-
-                $collection->addFieldToFilter($field, $value);
-            }
-        } catch (Mage_Core_Exception $e) {
-            $this->_fault('filters_invalid', $e->getMessage());
-        }
-
-        $numberOfProducts = 0;
-        if (!empty($collection)) {
-            $numberOfProducts = $collection->getSize();
-        }
-
-        return round($numberOfProducts);
-    }
-
-    /* API method */
-    public function products($options = array())
-    {
-        $mageObject = new Mage;
-        $this->_versionInfo = Mage::getVersionInfo();
-
-        if (!array_key_exists('page', $options)) {
-            $options['page'] = 1;
-        }
-
-        if (!array_key_exists('per_page', $options)) {
-            $options['per_page'] = 100;
-        }
-
-        $collection = $this->_prepareCollection($options);
-
-        $collection->addAttributeToSelect('*')
-            ->joinAttribute('visibility', 'catalog_product/visibility', 'entity_id', null, 'inner', $this->storeId)
-            ->setPage($options['page'], $options['per_page']);
-
-        // clear options that are not filters
-        unset($options['page']);
-        unset($options['per_page']);
-        unset($options['store']);
-
-
-        /* set current store manually so we get specific store url returned in getBaseUrl */
-        $this->storeRootCategoryId = Mage::app()->getStore($this->storeId)->getRootCategoryId();
-        $storeCategoriesCollection = Mage::getResourceModel('catalog/category_collection');
-        $storeCategoriesCollection->addAttributeToSelect('name')
-            ->addAttributeToSelect('is_active')
-            ->addPathsFilter('%/' . $this->storeRootCategoryId);
-
-        $baseUrl = Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB);
-
-        foreach ($storeCategoriesCollection as $storeCategory) {
-            $this->storeCategories[] = $storeCategory->getId();
-        }
-
-        /*@TODO: check if we still use this, or we can rely on storeCategories*/
-        Mage::helper('connector')->loadCategories();
-        $this->categories = Mage::helper('connector')->getCategories();
-        $this->productCategories = Mage::helper('connector')->getProductCategories();
-
-        /** @var $apiHelper Mage_Api_Helper_Data */
-        $apiHelper = Mage::helper('api');
-        if (method_exists($apiHelper, 'parseFilters')) {
-            $filters = $apiHelper->parseFilters($options, $this->_filtersMap);
-        } else {
-            $dataFeedWatchHelper = Mage::helper('connector');
-            $filters = $dataFeedWatchHelper->parseFiltersReplacement($options, $this->_filtersMap);
-        }
-
-
-        try {
-            foreach ($filters as $field => $value) {
-                //ignore status when flat catalog is enabled, as flat catalog does not have status
-                if ($field == 'status' && Mage::helper('catalog/product_flat')->isEnabled()) {
-                    continue;
-                }
-                $collection->addFieldToFilter($field, $value);
-            }
-        } catch (Mage_Core_Exception $e) {
-            $this->_fault('filters_invalid', $e->getMessage());
-        }
-
-        $result = array();
-        $price_keys = array('price', 'special_price');
-
-        foreach ($collection as $product) {
-
-            //re-setters
-            $parent_id = null;
-            $parent_sku = null;
-            $parent_url = null;
-            $configurable = false;
-
-            if ($this->storeId) {
-                $product = Mage::getModel('catalog/product')->setStoreId($this->storeId)->load($product->getId());
-            } else {
-                $product = Mage::getModel('catalog/product')->load($product->getId());
-            }
-
-            $product_result = array( // Basic product data
-                'product_id' => $product->getId(),
-                'sku' => $product->getSku(),
-                'product_type' => $product->getTypeId()
-            );
-
-            $selected_attributes = $this->synced_fields();
-            foreach ($product->getAttributes() as $attribute) {
-
-                /* ignore excluded attributes */
-                if(array_key_exists($attribute->getAttributeCode(), Mage::helper('connector')->getExcludedAttributes())){
-                    continue;
-                }
-
-                /* only use user-selected fields from DataFeedWatch -> Settings + required attributes */
-                if (in_array($attribute->getAttributeCode(),array_merge($selected_attributes,Mage::helper('connector')->getRequiredAttributes()))) {
-                    $value = $product->getData($attribute->getAttributeCode());
-                    if (!empty($value)) {
-                        if (in_array($attribute->getAttributeCode(), $price_keys)) {
-                            $value = sprintf("%.2f", round(trim($attribute->getFrontend()->getValue($product)), 2));
-                        } else {
-                            $value = trim($attribute->getFrontend()->getValue($product));
-                        }
-                    }
-                    $product_result[$attribute->getAttributeCode()] = $value;
-                } else {
-                    Mage::log('attr_code: '.$attribute->getAttributeCode().' was not synced',null,'datafeedwatch_connector.log');
-                }
-            }
-
-            /* get product main image file */
-            $imageUrl = (string)$product->getMediaConfig()->getMediaUrl($product->getData('image'));
-            $imageTmpArr = explode('.', $imageUrl);
-            $countImgArr = count($imageTmpArr);
-            if (empty($imageUrl) || $imageUrl == '' || !isset($imageUrl) || $countImgArr < 2) {
-                $imageUrl = (string)Mage::helper('catalog/image')->init($product, 'image');
-            }
-            $product_result['image_url'] = $imageUrl;
-
-            /* get product Url */
-            if (method_exists($mageObject, 'getEdition') && Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise) {
-                $product_result['product_url'] = $product->getProductUrl();
-            } else {
-                $product_result['product_url_rewritten'] = $baseUrl . Mage::helper('connector')->getRewrittenProductUrl($product,null,$this->storeId);
-                $product_result['product_url'] = $baseUrl . $product->getUrlPath();
-            }
-
-            /* Parent product logic,rewrite attributes with parent values */
             if ($product->getTypeId() == "simple") {
                 $parentIds = Mage::getModel('catalog/product_type_grouped')->getParentIdsByChild($product->getId());
                 if (!$parentIds) {
                     $parentIds = Mage::getModel('catalog/product_type_configurable')->getParentIdsByChild($product->getId());
                     if (isset($parentIds[0])) {
-                        $configurable = true;
+                        $isConfigurable = true;
                     }
                 }
 
                 if (isset($parentIds[0])) {
                     $parent_product = Mage::getModel('catalog/product')->load($parentIds[0]);
+                    /* @var $parent_product Mage_Catalog_Model_Product_Type_Configurable */
                     while (!$parent_product->getId()) {
                         if (count($parentIds) > 1) {
                             //parent not found, remove and retry with next one
@@ -260,33 +158,201 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                         }
                     }
 
-                    if ($parent_product->getStatus() == Mage_Catalog_Model_Product_Status::STATUS_DISABLED
-                        && $product->getVisibility() == Mage_Catalog_Model_Product_Visibility::VISIBILITY_NOT_VISIBLE
-                    ) {
+                    //do not include variant products that will not be fetched by products method
+                    if ($dataFeedWatchHelper->shouldSkipProduct($product,$parent_product)) {
                         continue;
                     }
-                    $parent_id = $parent_product->getId();
-                    $parent_sku = $parent_product->getSku();
+                }
+                $products[] = $product->getId();
+            }else {
+                $products[] = $product->getId();
+            }
+        }
 
-                    //parent_url
-                    if (method_exists($mageObject, 'getEdition')
-                        && Mage::getEdition() == Mage::EDITION_ENTERPRISE
-                        && Mage::getVersionInfo() >= $this->_supportedEnterprise)
-                    {
-                        $parent_url = $parent_product->getProductUrl();
-                    } else {
-                        $parent_url = $baseUrl . $parent_product->getUrlPath();
+        $numberOfProducts = count($products);
+
+        /* @deprecated since this doesn't apply filters based on status
+        $numberOfProducts = 0;
+        if (!empty($collection)) {
+            $numberOfProducts = $collection->getSize();
+        }
+        */
+
+        return $numberOfProducts;
+    }
+
+    /**
+     * @param array $options
+     * @return array
+     * @throws Mage_Api_Exception
+     */
+    public function products($options = array(), $fetchingUpdatedProducts = false)
+    {
+        $mageObject = new Mage;
+        $dataFeedWatchHelper = Mage::helper('connector');
+        /* @var $dataFeedWatchHelper DataFeedWatch_Connector_Helper_Data */
+
+        $this->_versionInfo = Mage::getVersionInfo();
+
+        /* If we have Enterprise Edition, make sure our current Enterprise is supported */
+        if (method_exists($mageObject, 'getEdition')
+            && Mage::getEdition() == Mage::EDITION_ENTERPRISE
+            && version_compare(implode('.',$this->_versionInfo),implode('.',$this->_supportedEnterprise),'>=')) {
+            $this->_isSupportedEnterprise = true;
+            $dataFeedWatchHelper->isSupportedEnterprise = true;
+        }
+
+        /* Use default page if not set */
+        if (!array_key_exists('page', $options)) {
+            $options['page'] = 0;
+        }
+
+        /* Use default limit if not set */
+        if (!array_key_exists('per_page', $options)) {
+            $options['per_page'] = 100;
+        }
+
+        /* Get Product Collection */
+        $collection = $dataFeedWatchHelper->prepareCollection($options);
+
+        /* Set current store using storeId got in prepareCollection */
+        $store = Mage::app()->getStore($dataFeedWatchHelper->storeId);
+
+        /* Clear options that are not product filters and were meant only for prepareCollection */
+        /* page and per_page already removed in preparecollection */
+        unset($options['store']);
+
+        /* @TODO: check if this shouldn't be prepareCollection part */
+        $collection->addAttributeToSelect('*')
+            ->joinAttribute('visibility', 'catalog_product/visibility', 'entity_id', null, 'inner', $dataFeedWatchHelper->storeId)
+            ->setPage($options['page'], $options['per_page']);
+
+        /* set current store manually so we get specific store url returned in getBaseUrl */
+        $this->storeRootCategoryId = Mage::app()->getStore($dataFeedWatchHelper->storeId)->getRootCategoryId();
+
+        $baseUrl = Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB);
+
+        /* prepare categories and storeCategories */
+        $dataFeedWatchHelper->loadCategories($this->storeRootCategoryId);
+
+        $result = array();
+
+        foreach ($collection as $product) {
+
+            //re-setters
+            $parent_id = null;
+            $parent_sku = null;
+            $parent_url = null;
+            $isConfigurable = false;
+
+            //reload product to get all attributes for particular store
+            if ($dataFeedWatchHelper->storeId) {
+                $product = Mage::getModel('catalog/product')->setStoreId($dataFeedWatchHelper->storeId)->load($product->getId());
+            } else {
+                $product = Mage::getModel('catalog/product')->load($product->getId());
+            }
+            /* @var $product Mage_Catalog_Model_Product */
+
+            $product_result = array(
+                // Basic product data
+                'product_id' => $product->getId(),
+                'sku' => $product->getSku(),
+                'product_type' => $product->getTypeId()
+            );
+
+            /* Get attribute settings */
+            /* user attributes selected in Admin -> Catalog -> Datafeedwatch -> Settings */
+            $selected_attributes = $this->synced_fields();
+
+            /* hardcoded attributes list to fetch */
+            $requiredAttributes = $dataFeedWatchHelper->getRequiredAttributes();
+
+            /* join two of the above into one */
+            $allowedAttributes = array_merge($selected_attributes, $requiredAttributes);
+
+            /* attributes that should never be returned */
+            $excludedAttributes = $dataFeedWatchHelper->getExcludedAttributes();
+
+            foreach ($product->getAttributes() as $attribute) {
+
+                /* ignore excluded attributes */
+                if (array_key_exists($attribute->getAttributeCode(), $excludedAttributes)) {
+                    continue;
+                }
+
+                /* only use user-selected fields from DataFeedWatch -> Settings + required attributes */
+                if (in_array($attribute->getAttributeCode(), $allowedAttributes)) {
+                    $value = $product->getData($attribute->getAttributeCode());
+                    if (!empty($value)) {
+                        $value = $attribute->getFrontend()->getValue($product);
+                        if(is_string($value)) {
+                            $value = trim($value);
+                        }
                     }
-
+                    $product_result[$attribute->getAttributeCode()] = $value;
+                } else {
+                    //if you ever decide to log this:
+                    //Mage::log('attr_code: '.$attribute->getAttributeCode().' was not synced',null,'datafeedwatch_connector.log');
                 }
             }
 
-            $product_result['parent_id'] = $parent_id;
-            $product_result['parent_sku'] = $parent_sku;
-            $product_result['parent_url'] = $parent_url;
-            if ($parent_id && $configurable && $product->getVisibility() == Mage_Catalog_Model_Product_Visibility::VISIBILITY_NOT_VISIBLE) {
-                //rewrite to prepare array of fields to overwrite with parent values
-                $productAttributes = Mage::helper('connector')->getProductAttributes($parent_product);
+            /* get product Url */
+            if ($this->_isSupportedEnterprise) {
+                $product_result['product_url'] = $product->getProductUrl();
+            } else {
+                $product_result['product_url_rewritten'] = $baseUrl . $dataFeedWatchHelper->getRewrittenProductUrl($product, null, $dataFeedWatchHelper->storeId);
+                $product_result['product_url'] = $baseUrl . $product->getUrlPath();
+            }
+
+
+            $parent_product = $dataFeedWatchHelper->getParentProductFromChild($product);
+            /* @var $parent_product Mage_Catalog_Model_Product */
+
+            if($parent_product) {
+                $parent_id = $parent_product->getId();
+
+                $product_result['parent_id'] = $parent_id;
+                $product_result['parent_sku'] = $parent_sku =$parent_product->getSku();
+                $product_result['parent_url'] = $parent_url;
+
+                $configurableParentIds = Mage::getModel('catalog/product_type_configurable')->getParentIdsByChild($product->getId());
+                if(in_array($parent_product->getId(),$configurableParentIds)){
+                    $isConfigurable = true;
+                }
+            }
+
+
+            /* Do not return the product if we should skip it */
+            if (
+                !$fetchingUpdatedProducts
+                && $dataFeedWatchHelper->shouldSkipProduct($product, $parent_product)
+            ) {
+                continue;
+            }
+
+            /* Change child product status to disabled if using updated_products and parent status is Disabled */
+            if(
+                $fetchingUpdatedProducts
+                && $product->getVisibility() == Mage_Catalog_Model_Product_Visibility::VISIBILITY_NOT_VISIBLE
+                && is_object($parent_product)
+                && $parent_product->getStatus()==Mage_Catalog_Model_Product_Status::STATUS_DISABLED
+            ){
+                $product_result['status'] = Mage::helper('catalog')->__('Disabled');
+            }
+
+            //parent_url
+            if($parent_product) {
+                if ($this->_isSupportedEnterprise) {
+                    $parent_url = $parent_product->getProductUrl();
+                } else {
+                    $parent_url = $baseUrl . $parent_product->getUrlPath();
+                }
+            }
+
+            /* if child is NVI, use parent attributes */
+            if ($parent_id && $isConfigurable && $product->getVisibility() == Mage_Catalog_Model_Product_Visibility::VISIBILITY_NOT_VISIBLE) {
+                /* rewrite to prepare array of fields to overwrite with parent values */
+                $productAttributes = $dataFeedWatchHelper->getProductAttributes($parent_product);
 
                 // get child product visibility
                 $visibilityStatuses = Mage_Catalog_Model_Product_Visibility::getOptionArray();
@@ -296,99 +362,102 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                     $productAttributes['visibility'] = null;
                 }
             } else {
-                $productAttributes = Mage::helper('connector')->getProductAttributes($product);
+                $productAttributes = $dataFeedWatchHelper->getProductAttributes($product);
             }
 
-            /* TODO: simplify this */
-            if (count($productAttributes)) {
+
+
+            //add product main image
+            /* @TODO: move to helper */
+            $imageUrl = (string)$product->getMediaConfig()->getMediaUrl($product->getData('image'));
+            $imageTmpArr = explode('.', $imageUrl);
+            $countImgArr = count($imageTmpArr);
+            if (empty($imageUrl) || $imageUrl == '' || !isset($imageUrl) || $countImgArr < 2) {
+                $imageUrl = (string)Mage::helper('catalog/image')->init($product, 'image');
+            }
+            $product_result['image_url'] = $imageUrl;
+
+
+
+            //always use parent values for description, short_description
+            if($parent_id){
+                $product_results['short_description'] = $parent_product->getShortDescription();
+                $product_results['description'] = $parent_product->getDescription();
+
+
+                //use parent image_url if(only if) it's empty in child
+                if(!array_key_exists('image_url',$product_result) || $product_result['image_url']==''){
+                    $product_result['image_url'] = $parent_product->getImageUrl();
+                }
+
+                //use parent attribute value if child attribute value empty or doesn't exist in child
                 foreach ($productAttributes as $key => $value) {
-                    /*
-                    use child values,
-                    except description, short_description, product_url
-                    and except when value (doesn't exist||is empty) in child
-                    also, use parent image_url if(only if) it's empty in child
-                    */
-                    if (!array_key_exists($key, $product_result) || !$product_result[$key] || in_array($key, array('description', 'short_description', 'product_url', 'image_url'))) {
-                        if ($key == 'image_url'
-                            && !stristr($product_result[$key], '.jpg')
-                            && !stristr($product_result[$key], '.png')
-                            && !stristr($product_result[$key], '.jpeg')
-                            && !stristr($product_result[$key], '.gif')
-                            && !stristr($product_result[$key], '.bmp')
-                        ) {
-                            //overwrite record image_url with parent's value when child doesn't have correct image url
-                            $product_result[$key] = $value;
-                        } elseif ($key != 'image_url') {
-                            //overwrite description,short_description and product_url
-                            $product_result[$key] = $value;
-                        }
+
+                    /*skip attributes we overwritten above */
+                    if(in_array($key,array('description','short_description','image_url'))){
+                        continue;
+                    }
+
+                    if (!array_key_exists($key, $product_result)
+                        || (array_key_exists($key, $product_result) && !$product_result[$key])
+                    ){
+                        $product_result[$key] = $value;
                     }
                 }
+
             }
 
-            $product_result = Mage::helper('connector')->addStockInfoToResult($product,$product_result);
             // add some parent attributes
-            $categoriesData = array(
-                'store_categories' => $this->storeCategories,
-                'categories' => $this->categories,
-            );
-            if ($parent_id && $configurable && ($product->getVisibility() == Mage_Catalog_Model_Product_Visibility::VISIBILITY_NOT_VISIBLE)) {
-                $product_result = Mage::helper('connector')->addProductDynamicAttributesToResult($product,$product_result, $parent_product, $categoriesData);
+            if ($parent_id && $isConfigurable && ($product->getVisibility() == Mage_Catalog_Model_Product_Visibility::VISIBILITY_NOT_VISIBLE)) {
+                $product_result = $dataFeedWatchHelper->addProductDynamicAttributesToResult($product, $product_result, $parent_product);
             } else {
-                $product_result = Mage::helper('connector')->addProductDynamicAttributesToResult($product,$product_result, null, $categoriesData);
+                $product_result = $dataFeedWatchHelper->addProductDynamicAttributesToResult($product, $product_result, null);
             }
 
-            /* @TODO: move to helper*/
-            // get simple product price with Super Attributes Prices Values
-            if ( $product->getTypeId() == "simple" ) {
+            // get variant name and default flag
+            if ($product->getTypeId() == "simple") {
                 // which is child of some parent product
-                if ( ! empty( $parent_id ) && gettype( $parent_product ) == 'object') {
-                    if($parent_product->getTypeInstance(true) instanceof Mage_Catalog_Model_Product_Type_Configurable) {
-                        // get all configurable attributes
-
-                        if ($parent_product) {
-                            $attributes = $parent_product->getTypeInstance(true)->getConfigurableAttributes($parent_product);
-                        }
-                        // array to keep the price differences for each attribute value
-                        $pricesByAttributeValues = array();
-                        // base price of the configurable product
-                        $basePrice = $parent_product->getFinalPrice();
-                        // loop through the attributes and get the price adjustments specified in the configurable product admin page
-                        foreach ($attributes as $attribute) {
-                            $prices = $attribute->getPrices();
-                            foreach ($prices as $price) {
-                                if ($price['is_percent']) {
-                                    $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $basePrice / 100;
-                                } else {
-                                    $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
-                                }
-                            }
-                        }
-
-                        $totalPrice = $basePrice;
-                        // loop through the configurable attributes
-                        foreach ($attributes as $attribute) {
-                            // get the value for a specific attribute for a simple product
-                            $value = $product->getData($attribute->getProductAttribute()->getAttributeCode());
-                            // add the price adjustment to the total price of the simple product
-                            if (isset($pricesByAttributeValues[$value])) {
-                                $totalPrice += $pricesByAttributeValues[$value];
-                            }
-                        }
-                        $_taxHelper = Mage::helper('tax');
+                if (!empty($parent_id) && gettype($parent_product) == 'object') {
+                    if ($parent_product->getTypeInstance(true) instanceof Mage_Catalog_Model_Product_Type_Configurable) {
 
                         $product_result['variant_name'] = $product->getName();
-                        $product_result['variant_price'] = $totalPrice;
-                        $product_result['variant_price_with_tax'] = $_taxHelper->getPrice($product, $product->getPrice(), 2);
-                        $product_result['variant_special_price_with_tax'] = $_taxHelper->getPrice($product, $product->getSpecialPrice(), 2);
+                        $product_result = $dataFeedWatchHelper->addDefaultVariantFlag($product, $parent_product, $product_result);
+
                     } else {
-                        // item has a parent becaus it extends Mage_Catalog_Model_Product_Type_Grouped
+                        // item has a parent because it extends Mage_Catalog_Model_Product_Type_Grouped
                         // it has no effect on price modifiers, however, so we ignore it
                     }
                 }
             }
 
-            $product_result = $this->updatePriceIncludingRules($product,$product_result);
+            //add multiple product images to result
+            $product_result = $dataFeedWatchHelper->addImageToResult($product,$product_result);
+            //add prices and custom price fields
+
+
+            $product_result = $dataFeedWatchHelper->addPricesToResult($product,$product_result,$parent_product);
+            //format prices and get rid of empty price fields (nullify them)
+            $product_result = $dataFeedWatchHelper->formatPrices($product, $product_result);
+            //add in stock and qty information
+            $product_result = $dataFeedWatchHelper->addStockInfoToResult($product, $product_result,$parent_product);
+
+            // adding currency code ex. 'USD'
+            $product_result['currency_code'] = $store->getCurrentCurrencyCode();
+
+
+
+            /*override product url*/
+            if(Mage::getStoreConfig('datafeedwatch/settings/url_type')){
+                /* 2 stands for Full URL */
+                if(Mage::getStoreConfig('datafeedwatch/settings/url_type') == 2){
+                    $product_result['product_url'] = Mage::helper('connector')->getFullUrl($product);
+                    if($parent_product) {
+                        $product_result['parent_url'] = Mage::helper('connector')->getFullUrl($parent_product);
+                    }
+                }
+            }
+
+
 
             $result[] = $product_result;
 
@@ -396,7 +465,9 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         return $result;
     }
 
-    /* API method */
+    /**
+     * @return int
+     */
     public function gmt_offset(){
         // get timezone offset in GMT
         $timeZone = new DateTimeZone(Mage::getStoreConfig('general/locale/timezone'));
@@ -406,89 +477,56 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         return $offset;
     }
 
-    public function updatePriceIncludingRules($product,$product_result){
-
-        $finalPrice = Mage::getModel('catalogrule/rule')->calcProductPriceRule($product,$product->getPrice());
-
-        if($finalPrice){
-            $product_result['price'] = sprintf("%.2f", round($finalPrice, 2));
-        }
-
-
-        return $product_result;
-    }
-
-    /* API Method */
+    /**
+     * @return array|mixed
+     */
     public function synced_fields(){
         $additional = array();
         if(Mage::getStoreConfig('datafeedwatch/settings/attributes')){
-            $additional = Zend_Serializer::unserialize(Mage::getStoreConfig('datafeedwatch/settings/attributes'));
+            $additional = unserialize(Mage::getStoreConfig('datafeedwatch/settings/attributes'));
         }
 
         return $additional;
     }
 
-    private function _prepareCollection($options){
-        $attributeModel = Mage::getModel('eav/entity_attribute');
-        $attributeId = $attributeModel->getIdByCode('catalog_product', 'ignore_datafeedwatch');
+    /**
+     * @param $options
+     * @return array
+     */
+    public function updated_products($options){
 
-        if ($attributeId) {
-            $collection = Mage::getModel('catalog/product')->getCollection()
-                ->addAttributeToFilter(array(
-                        array('attribute'=>'ignore_datafeedwatch', 'neq'=> 1),
-                        array('attribute'=>'ignore_datafeedwatch', 'null'=> true),
-                    ),
-                    '',
-                    'left'
-                )
-            ;
+        $dataFeedWatchHelper = Mage::helper('connector');
+        /* @var $dataFeedWatchHelper DataFeedWatch_Connector_Helper_Data */
+
+        $fetchList = $dataFeedWatchHelper->getUpdatedProductList($options);
+
+        if(!empty($fetchList)) {
+            $options['entity_id'] = $fetchList;
+
+            /*remove updated at filter, we do not want to use it on normal call*/
+            unset($options['updated_at']);
+            unset($options['status']);
+
+            $fetchingUpdatedProducts = true;
+            return $this->products($options,$fetchingUpdatedProducts);
         } else {
-            $collection = Mage::getModel('catalog/product')->getCollection();
+            return array();
         }
-
-
-        if (array_key_exists('store', $options)) {
-
-            //convert store code to store id
-            if (!is_numeric($options['store'])) {
-                $options['store'] = Mage::app()->getStore($options['store'])->getId();
-            }
-
-            if ($options['store']) {
-                $this->storeId = $options['store'];
-                Mage::app()->setCurrentStore($this->storeId);
-
-                //reinitialize collection because flat catalog settings may have changed
-                if ($attributeId) {
-                    $collection = Mage::getModel('catalog/product')->getCollection()
-                        ->addAttributeToFilter(array(
-                                array('attribute'=>'ignore_datafeedwatch', 'neq'=> 1),
-                                array('attribute'=>'ignore_datafeedwatch', 'null'=> true),
-                            ),
-                            '',
-                            'left'
-                        )
-                    ;
-                } else {
-                    $collection = Mage::getModel('catalog/product')->getCollection();
-                }
-
-                $collection->addStoreFilter($this->storeId);
-
-            } else {
-                //use default solution
-                $collection->addStoreFilter($this->_getStoreId($options['store']));
-            }
-        }
-
-        if (array_key_exists('status', $options)) {
-            if($options['status'] == Mage_Catalog_Model_Product_Status::STATUS_DISABLED) {
-                $collection->addAttributeToFilter('status', 0);
-            } elseif($options['status'] == Mage_Catalog_Model_Product_Status::STATUS_ENABLED) {
-                $collection->addAttributeToFilter('status', 1);
-            }
-        }
-
-        return $collection;
     }
+
+    /**
+     * @param $options
+     * @return int
+     */
+    public function updated_product_count($options){
+
+        $dataFeedWatchHelper = Mage::helper('connector');
+        /* @var $dataFeedWatchHelper DataFeedWatch_Connector_Helper_Data */
+
+        $fetchList = $dataFeedWatchHelper->getUpdatedProductList($options);
+
+        return count($fetchList);
+    }
+
+
 }
