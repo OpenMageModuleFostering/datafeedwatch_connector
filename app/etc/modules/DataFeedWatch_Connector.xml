@@ -4,6 +4,9 @@
     <DataFeedWatch_Connector>
       <active>true</active>
       <codePool>local</codePool>
+      <depends>
+        <Mage_Api />
+      </depends>
     </DataFeedWatch_Connector>
   </modules>
 </config>

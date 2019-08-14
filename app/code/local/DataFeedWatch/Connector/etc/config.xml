@@ -2,7 +2,7 @@
 <config>
 	<modules>
 		<DataFeedWatch_Connector>
-			<version>0.1.0</version>
+			<version>0.2.0</version>
 		</DataFeedWatch_Connector>
 	</modules>
 	<admin>
@@ -49,6 +49,11 @@
 		</layout>
 	</adminhtml>
 	<global>
+                <models>
+                        <connector>
+                                <class>DataFeedWatch_Connector_Model</class>
+                        </connector>
+                </models>
 		<helpers>
 			<connector>
 				<class>DataFeedWatch_Connector_Helper</class>
