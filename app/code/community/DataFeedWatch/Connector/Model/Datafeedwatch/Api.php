@@ -30,7 +30,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
     }
 
     public function version() {
-        return "0.2.7";  // this needs to be updated in etc/config.xml as well
+        return "0.2.8";  // this needs to be updated in etc/config.xml as well
     }
 
     public function product_count($options = array()) {
@@ -525,7 +525,11 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             foreach ($website->getGroups() as $group) {
                 $stores = $group->getStores();
                 foreach ($stores as $store) {
-                    $returned[$store->getCode()] = $store->getName();
+                    $returned[$store->getCode()] = array(
+                        'Website' => $website->getName(),
+                        'Store' => $group->getName(),
+                        'Store View' => $store->getName(),
+                    );
                 }
             }
         }
