@@ -1,25 +1,34 @@
 <?xml version="1.0"?>
 <config>
-	<api>
-		<resources>
-			<datafeedwatch translate="title" module="connector">
-				<title>DataFeedWatch API</title>
-				<model>connector/datafeedwatch_api</model>
-				<methods>
-					<version translate="title" module="connector">
-						<title>Retrieve extension version</title>
-					</version>
-					<products translate="title" module="connector">
-						<title>Retrieve products</title>
-					</products>
-					<product_count translate="title" module="connector">
-						<title>Retrieve product count</title>
-					</product_count>
+    <api>
+        <resources>
+            <datafeedwatch translate="title" module="connector">
+                <title>DataFeedWatch API</title>
+                <model>connector/datafeedwatch_api</model>
+                <methods>
+                    <version translate="title" module="connector">
+                        <title>Retrieve extension version</title>
+                    </version>
+                    <products translate="title" module="connector">
+                        <title>Retrieve products</title>
+                    </products>
+                    <product_count translate="title" module="connector">
+                        <title>Retrieve product count</title>
+                    </product_count>
                     <stores translate="title" module="connector">
                         <title>Retrieve stores</title>
                     </stores>
-				</methods>
-			</datafeedwatch>
-		</resources>
-	</api>
+                    <product_ids translate="title" module="connector">
+                        <title>Retrieve Product Ids</title>
+                    </product_ids>
+                    <synced_fields translate="title" module="connector">
+                        <title>Retrieve selected attributes</title>
+                    </synced_fields>
+                    <gmt_offset translate="title" module="connector">
+                        <title>Retrieve datetime in GMT</title>
+                    </gmt_offset>
+                </methods>
+            </datafeedwatch>
+        </resources>
+    </api>
 </config>

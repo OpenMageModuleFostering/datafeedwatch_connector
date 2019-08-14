@@ -1,10 +1,35 @@
 <?php
-class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_Adminhtml_Controller_Action {
-	protected $username = 'datafeedwatch';
-	protected $firstname = 'Api Access';
-	protected $lastname = 'DataFeedWatch';
-	protected $email = 'magento@datafeedwatch.com';
-	protected $register_url = 'https://my.datafeedwatch.com/platforms/magento/sessions/finalize';
+
+class DataFeedWatch_Connector_Adminhtml_SettingsController extends Mage_Adminhtml_Controller_Action{
+
+    public function indexAction(){
+
+        if($this->_request->isPost()) {
+            $additional_attributes = $this->_request->getParam('additional_attributes');
+            if ($additional_attributes) {
+                Mage::getModel('core/config')->saveConfig('datafeedwatch/settings/attributes', Zend_Serializer::serialize($additional_attributes));
+            }
+
+            Mage::getModel('core/config')->saveConfig('datafeedwatch/settings/ready', 1);
+
+            //also clean config cache
+            $cacheType = 'config';
+            Mage::app()->getCacheInstance()->cleanType($cacheType);
+            Mage::dispatchEvent('adminhtml_cache_refresh_type', array('type' => $cacheType));
+
+            Mage::getSingleton('adminhtml/session')->addSuccess(Mage::helper('connector')->__('Settings were successfully saved.'));
+            $this->_redirect('*/*/*');
+            return;
+        }
+        $this->loadLayout();
+        $this->renderLayout();
+    }
+
+    protected $username = 'datafeedwatch';
+    protected $firstname = 'Api Access';
+    protected $lastname = 'DataFeedWatch';
+    protected $email = 'magento@datafeedwatch.com';
+    protected $register_url = 'https://my.datafeedwatch.com/platforms/magento/sessions/finalize';
 
     /**
      * currently the same as $register_url
@@ -12,22 +37,7 @@ class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_
      */
     protected $redirect_url = 'https://my.datafeedwatch.com/';
 
-	public function indexAction() {
-        $ready = Mage::getStoreConfig('datafeedwatch/settings/ready');
-        if(!$ready){
-            Mage::getSingleton('adminhtml/session')
-                ->addError(Mage::helper('connector')
-                ->__('You need to pick your attributes and save your attribute settings before you can access My DataFeedWatch.'));
-
-            $this->_redirect('*/adminhtml_settings/index');
-            return;
-        }
-		$this->loadLayout();
-		$this->_title($this->__("DataFeedWatch"));
-		$this->renderLayout();
-	}
-
-	public function createuserAction() {
+    public function createuserAction() {
 
         //Create Api Role for datafeedwatch user
         $role = $this->_createApiRole();
@@ -38,42 +48,42 @@ class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_
         //send the api key to DFW
         file_get_contents($this->_registerUrl($api_key));
 
-		//Get Api User
-		$user = $this->getUser();
-		if ($user->getId()) {
-			//Update Api User
-			$user = $this->_updateApiUser($api_key, $user);
-		} else {
-			//Create Api User
-			$user = $this->_createApiUser($api_key);
-		}
+	    //Get Api User
+	    $user = $this->getUser();
+	    if ($user->getId()) {
+		    //Update Api User
+		    $user = $this->_updateApiUser($api_key, $user);
+	    } else {
+		    //Create Api User
+		    $user = $this->_createApiUser($api_key);
+	    }
 
         //Assign Api User to the Api Role
         $user->setRoleId($role->getId())->setUserId($user->getId());
-		$user->add();
+        $user->add();
 
         //redirect to register token url in DFW
         $this->getResponse()->setRedirect($this->_registerUrl($api_key));
-		return;
-	}
+        return;
+    }
 
     public function redirectAction(){
         $this->getResponse()->setRedirect($this->redirect_url);
         return;
     }
 
-	public function getUser() {
-		$model = Mage::getModel('api/user');
-		return $model->load($this->email, 'email');
-	}
+    public function getUser() {
+        $model = Mage::getModel('api/user');
+        return $model->load($this->email, 'email');
+    }
 
-	private function _generateApiKey() {
-		return sha1(time()+substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 32));
-	}
+    private function _generateApiKey() {
+        return sha1(time()+substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 32));
+    }
 
-	private function _registerUrl($api_key) {
+    private function _registerUrl($api_key) {
 		return $this->register_url.'?shop='.Mage::getBaseUrl().'&token='.$api_key;
-	}
+    }
 
     private function _createApiRole(){
         $role = Mage::getModel('api/roles')->load($this->lastname, 'role_name');

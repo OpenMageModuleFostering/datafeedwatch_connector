@@ -2,6 +2,7 @@
 
 class DataFeedWatch_Connector_Block_Adminhtml_Connectorbackend extends Mage_Adminhtml_Block_Template {
 	protected $email = 'magento@datafeedwatch.com';
+    private static $instance = null;
 
 	public function __construct() {
 		parent::__construct();
@@ -19,5 +20,13 @@ class DataFeedWatch_Connector_Block_Adminhtml_Connectorbackend extends Mage_Admi
 
     public function getRedirectUrl() {
         return $this->getUrl('*/*/redirect');
+    }
+    public static function getInstance()
+    {
+        if (self::$instance == null) {
+            self::$instance = new self;
+        }
+
+        return self::$instance;
     }
 }
