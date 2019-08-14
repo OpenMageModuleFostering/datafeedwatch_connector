@@ -2,7 +2,7 @@
 <config>
 	<modules>
 		<DataFeedWatch_Connector>
-			<version>0.2.4</version>
+			<version>0.2.6</version>
 		</DataFeedWatch_Connector>
 	</modules>
         
@@ -49,7 +49,7 @@
 						<children> 
 							<connectorbackend translate="title" module="connector">
 								<title>DataFeedWatch</title>
-							</connectorbackend>                                                                                                                                                                                              
+							</connectorbackend>
 						</children>
 					</catalog>
 				</admin>

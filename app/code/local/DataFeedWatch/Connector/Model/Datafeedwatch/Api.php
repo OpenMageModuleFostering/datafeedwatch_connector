@@ -17,7 +17,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
     }
 
     public function version() {
-        return "0.2.5";  // this needs to be updated in etc/config.xml as well
+        return "0.2.6";  // this needs to be updated in etc/config.xml as well
     }
 
     public function product_count($options = array()) {
@@ -91,11 +91,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         $price_keys = array('price', 'special_price');
 
         foreach ($collection as $product) {
-            $product_result = array(// Basic product data
-                'product_id' => $product->getId(),
-                'sku' => $product->getSku()
-            );
-
+            
             $parent_id = '0';
             $configrable = false;
 
@@ -108,9 +104,19 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                     }
                 }
                 if (isset($parentIds[0])) {
-                    $parent_id = Mage::getModel('catalog/product')->load($parentIds[0])->getId();
+                    //$parent_id = Mage::getModel('catalog/product')->load($parentIds[0])->getId();
+                    $parent_product = Mage::getModel('catalog/product')->load($parentIds[0]);
+                    if($parent_product->getStatus() == 2 && $product->getVisibility() == 1) {
+                        continue;
+                    }
+                    $parent_id = $parent_product->getId();
                 }
             }
+            
+            $product_result = array(// Basic product data
+                'product_id' => $product->getId(),
+                'sku' => $product->getSku()
+            );
 
             $product_result['parent_id'] = $parent_id;
 
@@ -165,15 +171,11 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                 }
             }
 
-
             $inventoryStatus = Mage::getModel(self::STOCK_ITEM_MODEL)->loadByProduct($product);
             if (!empty($inventoryStatus)) {
                 $product_result['quantity'] = (int) $inventoryStatus->getQty();
                 $product_result['is_in_stock'] = $inventoryStatus->getIsInStock() == '1' ? 1 : 0;
             }
-
-
-
             $result[] = $product_result;
         }
         return $result;
@@ -322,9 +324,17 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         if (empty($imageUrl) || $imageUrl == '' || !isset($imageUrl) || $countImgArr < 2) {
             $imageUrl = (string) Mage::helper('catalog/image')->init($product, 'image');
         }
-
         $prices['image_url'] = $imageUrl;
-
+        
+        $additional_images = $product->getMediaGalleryImages();
+        if (count($additional_images) > 0) {
+            $i = 1;
+            foreach ($additional_images as $images) {
+                if($images->getUrl() != $prices['image_url'])
+                    $prices['additional_image_url'.$i++] = $images->getUrl();
+            }
+        }
+       
         $specialTmpPrice = $product->getSpecialPrice();
 
         if ($specialTmpPrice && (strtotime(date('Y-m-d H:i:s')) < strtotime($product['special_to_date'])
@@ -368,9 +378,9 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         // categories
         $category_id = $product->getCategoryIds();
         if (empty($category_id)) {
-            $prices['category_name'] = '';
+            $prices['category_name']        = '';
             $prices['category_parent_name'] = '';
-            $prices['category_path'] = '';
+            $prices['category_path']        = '';
         } else {
             rsort($category_id);
             $this->productCategories = array();
@@ -397,5 +407,5 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
         return $prices;
     }
-
+    
 }
