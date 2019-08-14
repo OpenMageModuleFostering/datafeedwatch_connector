@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+  <connector_adminhtml_connectorbackend_index>
+	<reference name="content">
+	  <block type="connector/adminhtml_connectorbackend" name="connectorbackend" template="connector/connectorbackend.phtml"/>
+	</reference>
+  </connector_adminhtml_connectorbackend_index>
+</layout>

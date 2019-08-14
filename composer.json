@@ -1,0 +1,16 @@
+{
+    "name": "OpenMageModuleFostering/DataFeedWatch_Connector",
+    "type": "magento-module",
+    "license": "GPL",
+    "homepage": "",
+    "description": "DataFeedWatch",
+    "authors": [
+    {
+        "name": "DataFeedWatch",
+        "email": "support@datafeedwatch.com"
+    }
+],
+    "suggest": {
+        "magento-hackathon/magento-composer-installer": "*"
+    }
+}

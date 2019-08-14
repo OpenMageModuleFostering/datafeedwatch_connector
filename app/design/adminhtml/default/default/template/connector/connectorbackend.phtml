@@ -1,0 +1,18 @@
+<h1>Demo Backend Page Content</h1>
+<br/>
+<br/>
+<?php
+if ($user->isObjectNew()) {
+?>
+DataFeedWatch api user is not created, please create one in order to connect.
+<br/><br/>
+<a href="<?=$this->getCreateUserUrl()?>">Register in DataFeedWatch</a>
+<?php
+} else {
+?>
+DataFeedWatch api user is already created.
+<br/>
+<a href="<?=$this->getUpdateTokenUrl()?>">Re-register in DataFeedWatch</a>
+<?php
+}
+?>

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package>
+    <name>DataFeedWatch_Connector</name>
+    <version>0.1.0</version>
+    <stability>stable</stability>
+    <license>GPL</license>
+    <channel>community</channel>
+    <extends/>
+    <summary>DataFeedWatch</summary>
+    <description>DataFeedWatch</description>
+    <notes>DataFeedWatch</notes>
+    <authors><author><name>DataFeedWatch</name><user>datafeedwatch</user><email>support@datafeedwatch.com</email></author></authors>
+    <date>2013-02-07</date>
+    <time>16:26:28</time>
+    <contents><target name="magelocal"><dir name="DataFeedWatch"><dir name="Connector"><dir name="Block"><dir name="Adminhtml"><file name="Connectorbackend.php" hash="afe5bd4888768229d5b668f466b770b5"/></dir></dir><dir name="Helper"><file name="Data.php" hash="983d7ad023616b365dce180680e4f9f0"/></dir><dir name="controllers"><dir name="Adminhtml"><file name="ConnectorbackendController.php" hash="dfa561302ef7eebe656b229fe275a2eb"/></dir></dir><dir name="etc"><file name="config.xml" hash="d0acf798ce2cca1669a54db93ee207d6"/><file name="system.xml" hash="ab5e8d56d032ba69c930ab7879484212"/></dir></dir></dir></target><target name="magedesign"><dir name="adminhtml"><dir name="default"><dir name="default"><dir name="layout"><file name="connector.xml" hash="14d59b8e9f66fba5d7c1f8d0f62dfc3c"/></dir><dir name="template"><dir name="connector"><file name="connectorbackend.phtml" hash="f5ec823243774408a1b65e74af144f5b"/></dir></dir></dir></dir></dir></target><target name="mageetc"><dir name="modules"><file name="DataFeedWatch_Connector.xml" hash="a8d7c5380f228369550b2b0db81bd82a"/></dir></target></contents>
+    <compatible/>
+    <dependencies><required><php><min>5.1.0</min><max>6.0.0</max></php></required></dependencies>
+</package>

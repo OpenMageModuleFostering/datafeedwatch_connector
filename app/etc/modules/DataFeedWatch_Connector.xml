@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config>
+  <modules>
+    <DataFeedWatch_Connector>
+      <active>true</active>
+      <codePool>local</codePool>
+    </DataFeedWatch_Connector>
+  </modules>
+</config>
