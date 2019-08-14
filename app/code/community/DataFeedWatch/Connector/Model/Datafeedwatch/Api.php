@@ -10,28 +10,58 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
     const CATEGORY_NAME_FIELD = 'name';
     const CATEGORY_SEPARATOR = ' > ';
     public $categories = array();
-    
+
+    public $storeId = 0;
+    public $storeRootCategoryId = 2;
+    public $storeCategories = array();
+
+    protected $_supportedEnterprise = array(
+        'major'     => '1',
+        'minor'     => '13',
+        'revision'  => '0',
+        'patch'     => '2',
+        'stability' => '',
+        'number'    => '',
+    );
+
     public function __construct() {
         $this->productCategories = array();
         ini_set('memory_limit', '1024M');
     }
 
     public function version() {
-        return "0.2.6";  // this needs to be updated in etc/config.xml as well
+        return "0.2.7";  // this needs to be updated in etc/config.xml as well
     }
 
     public function product_count($options = array()) {
         $collection = Mage::getModel(self::CATALOG_PRODUCT_MODEL)
-                ->getCollection();
+            ->getCollection();
 
         if (array_key_exists('store', $options)) {
-            $collection->addStoreFilter($this->_getStoreId($options['store']));
+            //convert store code to store id
+            if(!is_numeric($options['store'])){
+                $options['store'] = Mage::app()->getStore($options['store'])->getId();
+            }
+
+            if($options['store']){
+                $collection->addStoreFilter($options['store']);
+            } else {
+                //use default solution
+                $collection->addStoreFilter($this->_getStoreId($options['store']));
+            }
+
+            unset($options['store']);
         }
 
         $apiHelper = Mage::helper('api');
         $filters = $apiHelper->parseFilters($options, $this->_filtersMap);
+
         try {
             foreach ($filters as $field => $value) {
+                //ignore status when flat catalog is enabled
+                if($field == 'status' && Mage::getStoreConfig('catalog/frontend/flat_catalog_product')==1){
+                    continue;
+                }
                 $collection->addFieldToFilter($field, $value);
             }
         } catch (Mage_Core_Exception $e) {
@@ -48,6 +78,9 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
     public function products($options = array()) {
 
+        $this->_versionInfo = Mage::getVersionInfo();
+
+
         if (!array_key_exists('page', $options)) {
             $options['page'] = 1;
         }
@@ -56,13 +89,40 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             $options['per_page'] = 100;
         }
 
-        $collection = Mage::getModel(self::CATALOG_PRODUCT_MODEL)
-                ->getCollection()
-                ->addAttributeToSelect('*')
-                ->setPage($options['page'], $options['per_page']);
+        $collection = Mage::getModel('catalog/product')->getCollection();
 
         if (array_key_exists('store', $options)) {
-            $collection->addStoreFilter($this->_getStoreId($options['store']));
+            //convert store code to store id
+            if(!is_numeric($options['store'])){
+                $options['store'] = Mage::app()->getStore($options['store'])->getId();
+            }
+
+            if($options['store']){
+                $this->storeId = $options['store'];
+                Mage::app()->setCurrentStore($this->storeId);
+
+                //reinitialize collection because flat catalog settings may have changed
+                $collection = Mage::getModel('catalog/product')->getCollection();
+                $collection->addStoreFilter($this->storeId);
+            } else {
+                //use default solution
+                $collection->addStoreFilter($this->_getStoreId($options['store']));
+            }
+
+        }
+
+        $collection->addAttributeToSelect('*')
+            ->setPage($options['page'], $options['per_page']);
+
+        /* set current store manually so we get specific store url returned in getBaseUrl */
+        $this->storeRootCategoryId = Mage::app()->getStore()->getRootCategoryId();
+        $storeCategoriesCollection = Mage::getModel('catalog/category')->getCollection()
+            ->addAttributeToSelect('name')
+            ->addAttributeToSelect('is_active')
+            ->addPathsFilter('%/'.$this->storeRootCategoryId);
+
+        foreach($storeCategoriesCollection as $storeCategory){
+            $this->storeCategories[] = $storeCategory->getId();
         }
 
         // clear options that are not filters
@@ -80,6 +140,10 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         $filters = $apiHelper->parseFilters($options, $this->_filtersMap);
         try {
             foreach ($filters as $field => $value) {
+                //ignore status when flat catalog is enabled
+                if($field == 'status' && Mage::getStoreConfig('catalog/frontend/flat_catalog_product')==1){
+                    continue;
+                }
                 $collection->addFieldToFilter($field, $value);
             }
         } catch (Mage_Core_Exception $e) {
@@ -91,7 +155,11 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         $price_keys = array('price', 'special_price');
 
         foreach ($collection as $product) {
-            
+            if($this->storeId){
+                $product = Mage::getModel('catalog/product')->setStoreId($this->storeId)->load($product->getId());
+            } else {
+                $product = Mage::getModel('catalog/product')->load($product->getId());
+            }
             $parent_id = '0';
             $configrable = false;
 
@@ -112,7 +180,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                     $parent_id = $parent_product->getId();
                 }
             }
-            
+
             $product_result = array(// Basic product data
                 'product_id' => $product->getId(),
                 'sku' => $product->getSku()
@@ -121,6 +189,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             $product_result['parent_id'] = $parent_id;
 
             foreach ($product->getAttributes() as $attribute) {
+
                 if (!array_key_exists($attribute->getAttributeCode(), $this->_notNeededFields())) {
                     $value = $product->getData($attribute->getAttributeCode());
                     if (!empty($value)) {
@@ -134,14 +203,14 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                 }
             }
 
-            $product = Mage::getModel('catalog/product')->load($product->getId());
+
             //            $imageUrl = $product->getImage();
             //            if(empty($imageUrl)) {
             //                $product = Mage::getModel('catalog/product')->load($product->getId());
             //                $imageUrl = $product->getImage();
             //            }
             //
-                //            if(empty($imageUrl) || $imageUrl == '') {
+            //            if(empty($imageUrl) || $imageUrl == '') {
             //                $imageUrl = $product->getMediaConfig()->getMediaUrl($product->getData('image'));
             //                if(empty($imageUrl) || $imageUrl == '') {
             //                    $imageUrl = Mage::helper('catalog/image')->init($product, 'image');
@@ -156,18 +225,44 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                 $imageUrl = (string) Mage::helper('catalog/image')->init($product, 'image');
             }
 
-            $product_result['product_url'] = $baseUrl . $product->getUrlPath();
+
+            if(Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise){
+                $product_result['product_url'] = $product->getProductUrl();
+            } else {
+                $product_result['product_url'] = $baseUrl . $product->getUrlPath();
+            }
             $product_result['image_url'] = $imageUrl;
 
             $tmpPrices = array();
             if ($parent_id && $configrable && $product->getVisibility() == 1) {
                 $tmpPrices = $this->getDisplayPrice($parent_id);
             } else {
-                $tmpPrices = $this->getDisplayPrice($product->getId());
+                $tmpPrices = $this->getDisplayPrice($product);
             }
+
             if (count($tmpPrices)) {
                 foreach ($tmpPrices as $key => $value) {
-                    $product_result[$key] = $value;
+                    /*
+                    use child values,
+                    except description, short_description, product_url
+                    and except when value (doesn't exist||is empty) in child
+                    also, use parent image_url if it's empty in child
+                    */
+                    if(!array_key_exists($key,$product_result) || !$product_result[$key] || in_array($key,array('description','short_description','product_url','image_url'))){
+                        if($key=='image_url'
+                            && !stristr($product_result[$key],'.jpg')
+                            && !stristr($product_result[$key],'.png')
+                            && !stristr($product_result[$key],'.jpeg')
+                            && !stristr($product_result[$key],'.gif')
+                            && !stristr($product_result[$key],'.bmp')
+                        ){
+                            //overwrite record image_url with parent's value when child doesn't have correct image url
+                            $product_result[$key] = $value;
+                        } elseif($key!='image_url'){
+                            //overwrite description,short_description and product_url
+                            $product_result[$key] = $value;
+                        }
+                    }
                 }
             }
 
@@ -177,11 +272,13 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                 $product_result['is_in_stock'] = $inventoryStatus->getIsInStock() == '1' ? 1 : 0;
             }
             $result[] = $product_result;
+
         }
         return $result;
     }
 
     private function _loadCategories() {
+
         $parentId = 1;
 
         /* @var $tree Mage_Catalog_Model_Resource_Eav_Mysql4_Category_Tree */
@@ -193,9 +290,8 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         }
 
         $collection = Mage::getModel('catalog/category')->getCollection()
-                ->setStoreId($this->_getStoreId(null))
-                ->addAttributeToSelect('name')
-                ->addAttributeToSelect('is_active');
+            ->addAttributeToSelect('name')
+            ->addAttributeToSelect('is_active');
 
         $tree->addCollectionData($collection, true);
 
@@ -286,14 +382,23 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         );
     }
 
-    private function getDisplayPrice($product_id = 0) {
+    private function getDisplayPrice($product_id) {
 
-        if ($product_id < 1) {
+        if (!$product_id) {
             return 0;
         }
+
         $prices = array();
 
-        $product = Mage::getModel('catalog/product')->load($product_id);
+        if($product_id instanceof Mage_Catalog_Model_Product){
+            $product = $product_id;
+        } else {
+            if ($product_id < 1) {
+                return 0;
+            }
+            $product = Mage::getModel('catalog/product')->setStoreId($this->storeId)->load($product_id);
+        }
+
         $store_code = Mage::app()->getStore()->getCode();
         $_taxHelper = Mage::helper('tax');
         // Get Currency Code
@@ -301,9 +406,9 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         $cur_curncy_code = Mage::app()->getStore($store_code)->getCurrentCurrencyCode();
 
         $allowedCurrencies = Mage::getModel('directory/currency')
-                ->getConfigAllowCurrencies();
+            ->getConfigAllowCurrencies();
         $currencyRates = Mage::getModel('directory/currency')
-                ->getCurrencyRates($bas_curncy_code, array_values($allowedCurrencies));
+            ->getCurrencyRates($bas_curncy_code, array_values($allowedCurrencies));
 
         $prices['price_with_tax'] = $_finalPriceInclTax = $_taxHelper->getPrice($product, $product->getPrice(), 2); //$product['price'];
         $prices['price'] = $_taxHelper->getPrice($product, $product->getPrice(), NULL);
@@ -316,7 +421,11 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         $prices['short_description'] = $product->getShortDescription();
 
         $baseUrl = Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB);
-        $prices['product_url'] = $baseUrl . $product->getUrlPath();
+        if(Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise){
+            $product_result['product_url'] = $product->getProductUrl();
+        } else {
+            $product_result['product_url'] = $baseUrl . $product->getUrlPath();
+        }
         //Setting image
         $imageUrl = (string) $product->getMediaConfig()->getMediaUrl($product->getData('image'));
         $imageTmpArr = explode('.', $imageUrl);
@@ -325,7 +434,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             $imageUrl = (string) Mage::helper('catalog/image')->init($product, 'image');
         }
         $prices['image_url'] = $imageUrl;
-        
+
         $additional_images = $product->getMediaGalleryImages();
         if (count($additional_images) > 0) {
             $i = 1;
@@ -334,7 +443,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                     $prices['additional_image_url'.$i++] = $images->getUrl();
             }
         }
-       
+
         $specialTmpPrice = $product->getSpecialPrice();
 
         if ($specialTmpPrice && (strtotime(date('Y-m-d H:i:s')) < strtotime($product['special_to_date'])
@@ -347,8 +456,8 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
         }
 
         if ($bas_curncy_code != $cur_curncy_code
-                && array_key_exists($bas_curncy_code, $currencyRates)
-                && array_key_exists($cur_curncy_code, $currencyRates)
+            && array_key_exists($bas_curncy_code, $currencyRates)
+            && array_key_exists($cur_curncy_code, $currencyRates)
         ) {
             if ($prices['special_price'] && (strtotime(date('Y-m-d H:i:s')) < strtotime($product['special_to_date'])
                     || empty($product['special_to_date']))) {
@@ -359,7 +468,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             $prices['price_with_tax'] = Mage::helper('directory')->currencyConvert($_finalPriceInclTax, $bas_curncy_code, $cur_curncy_code);
             $prices['price'] = Mage::helper('directory')->currencyConvert($prices['price'], $bas_curncy_code, $cur_curncy_code);
         }
-        
+
         // Getting Additional information
         $attributes = $product->getAttributes();
         //$attrs = $product->getTypeInstance(true)->getConfigurableAttributesAsArray($product);
@@ -388,17 +497,20 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             foreach ($category_id as $key => $cate) {
 //                if(in_array($cate, $this->productCategories))
 //                    continue;
-                
+
+                if(!in_array($cate, $this->storeCategories))
+                    continue;
+
                 $category = $this->categories[$cate];
                 $prices['category_name'.$index] = $category['name'];
                 $prices['category_parent_name'.$index] = $this->categories[$category['parent_id']]['name'];
                 $prices['category_path'.$index] = implode(' > ', $this->_buildCategoryPath($category['category_id']));
                 if($index == '')
                     $index = 1;
-                else 
+                else
                     $index = $index+1;
             }
-            
+
 //            $category = $this->categories[$category_id[0]];
 //            $prices['category_name'] = $category['name'];
 //            $prices['category_parent_name'] = $this->categories[$category['parent_id']]['name'];
@@ -407,5 +519,18 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
         return $prices;
     }
-    
+
+    public function stores(){
+        foreach (Mage::app()->getWebsites() as $website) {
+            foreach ($website->getGroups() as $group) {
+                $stores = $group->getStores();
+                foreach ($stores as $store) {
+                    $returned[$store->getCode()] = $store->getName();
+                }
+            }
+        }
+        return $returned;
+    }
+
+
 }
