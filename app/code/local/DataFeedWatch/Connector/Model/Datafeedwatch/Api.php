@@ -15,7 +15,7 @@
         }
         
         public function version() {
-            return "0.2.2";  // this needs to be updated in etc/config.xml as well
+            return "0.2.3";  // this needs to be updated in etc/config.xml as well
         }
         
         public function product_count($options = array()) {
@@ -352,15 +352,15 @@
             // categories
                 $category_id = $product->getCategoryIds();
                 if (empty($category_id)) {
-                    $product_result['category_name'] = '';
-                    $product_result['category_parent_name'] = '';
-                    $product_result['category_path'] = '';
+                    $prices['category_name'] = '';
+                    $prices['category_parent_name'] = '';
+                    $prices['category_path'] = '';
                 } else {
                     rsort($category_id);
                     $category = $this->categories[$category_id[0]];
-                    $product_result['category_name'] = $category['name'];
-                    $product_result['category_parent_name'] = $this->categories[$category['parent_id']]['name'];
-                    $product_result['category_path'] = implode(' > ', $this->_buildCategoryPath($category['category_id']));
+                    $prices['category_name'] = $category['name'];
+                    $prices['category_parent_name'] = $this->categories[$category['parent_id']]['name'];
+                    $prices['category_path'] = implode(' > ', $this->_buildCategoryPath($category['category_id']));
                 }
                 
             return $prices;
