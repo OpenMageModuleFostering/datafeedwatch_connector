@@ -12,10 +12,11 @@
         
         public function __construct() {
             $this->categories = array();
+            ini_set('memory_limit','1024M');
         }
         
         public function version() {
-            return "0.2.3";  // this needs to be updated in etc/config.xml as well
+            return "0.2.4";  // this needs to be updated in etc/config.xml as well
         }
         
         public function product_count($options = array()) {

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
     <name>DataFeedWatch_Connector</name>
-    <version>0.2.3</version>
+    <version>0.2.4</version>
     <stability>stable</stability>
     <license uri="http://opensource.org/licenses/osl-3.0.php">OSL v3.0</license>
     <channel>community</channel>
@@ -9,11 +9,11 @@
     <summary>DataFeedWatch extension for Magento</summary>
     <description>DataFeedWatch enables Magento shops to optimize their product data&#xD;
 feed for Google Shopping and other channels</description>
-    <notes>DataFeedWatch Release version 0.2.2</notes>
+    <notes>DataFeedWatch Release version 0.2.4</notes>
     <authors><author><name>DataFeedWatch</name><user>Adeel</user><email>adeel.developer@gmail.com</email></author></authors>
-    <date>2013-11-18</date>
-    <time>15:11:57</time>
-    <contents><target name="magelocal"><dir name="DataFeedWatch"><dir name="Connector"><dir name="Block"><dir name="Adminhtml"><file name="Connectorbackend.php" hash="afe5bd4888768229d5b668f466b770b5"/></dir></dir><dir name="Helper"><file name="Data.php" hash="983d7ad023616b365dce180680e4f9f0"/></dir><dir name="Model"><dir name="Datafeedwatch"><file name="Api.php" hash="55720782ced30f92702cb9bf798fb7a7"/></dir></dir><dir name="controllers"><dir name="Adminhtml"><file name="ConnectorbackendController.php" hash="dfa561302ef7eebe656b229fe275a2eb"/></dir><file name="TestController.php" hash="0eebed552b28b181ae167bb59b8f9a72"/></dir><dir name="etc"><file name="api.xml" hash="84e8b97ba0dc25154ff62126640de989"/><file name="config.xml" hash="b704d1d0cbaba82d5d61b4e6d43edb98"/><file name="system.xml" hash="ab5e8d56d032ba69c930ab7879484212"/></dir></dir></dir></target><target name="magedesign"><dir name="adminhtml"><dir name="default"><dir name="default"><dir name="layout"><file name="connector.xml" hash="14d59b8e9f66fba5d7c1f8d0f62dfc3c"/></dir><dir name="template"><dir name="connector"><file name="connectorbackend.phtml" hash="87fbcd16a96af52ce352bc45d9aeab4a"/></dir></dir></dir></dir></dir></target><target name="mageetc"><dir name="modules"><file name="DataFeedWatch_Connector.xml" hash="d4ef6cebcefd37d5f0546eca344941eb"/></dir></target></contents>
+    <date>2013-11-22</date>
+    <time>14:05:26</time>
+    <contents><target name="magelocal"><dir name="DataFeedWatch"><dir name="Connector"><dir name="Block"><dir name="Adminhtml"><file name="Connectorbackend.php" hash="afe5bd4888768229d5b668f466b770b5"/></dir></dir><dir name="Helper"><file name="Data.php" hash="983d7ad023616b365dce180680e4f9f0"/></dir><dir name="Model"><dir name="Datafeedwatch"><file name="Api.php" hash="e4138a980915ec189094c63b01af3b15"/></dir></dir><dir name="controllers"><dir name="Adminhtml"><file name="ConnectorbackendController.php" hash="dfa561302ef7eebe656b229fe275a2eb"/></dir><file name="TestController.php" hash="0eebed552b28b181ae167bb59b8f9a72"/></dir><dir name="etc"><file name="api.xml" hash="84e8b97ba0dc25154ff62126640de989"/><file name="config.xml" hash="a48f183854af578bfc8dfeb3f1648617"/><file name="system.xml" hash="ab5e8d56d032ba69c930ab7879484212"/></dir></dir></dir></target><target name="magedesign"><dir name="adminhtml"><dir name="default"><dir name="default"><dir name="layout"><file name="connector.xml" hash="14d59b8e9f66fba5d7c1f8d0f62dfc3c"/></dir><dir name="template"><dir name="connector"><file name="connectorbackend.phtml" hash="87fbcd16a96af52ce352bc45d9aeab4a"/></dir></dir></dir></dir></dir></target><target name="mageetc"><dir name="modules"><file name="DataFeedWatch_Connector.xml" hash="d4ef6cebcefd37d5f0546eca344941eb"/></dir></target></contents>
     <compatible/>
     <dependencies><required><php><min>5.1.0</min><max>6.0.0</max></php></required></dependencies>
 </package>
