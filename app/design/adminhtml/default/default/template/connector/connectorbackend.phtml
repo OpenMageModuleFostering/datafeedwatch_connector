@@ -1,0 +1,14 @@
+<h1>DataFeedWatch</h1>
+<br/>
+<br/>
+<?php
+if ($user->isObjectNew()) {
+?>
+<button onclick="setLocation('<?php echo $this->getCreateUserUrl()?>')" type="button" class="scalable">Go to my DataFeedWatch</button>
+<?php
+} else {
+?>
+<button onclick="setLocation('<?php echo $this->getUpdateTokenUrl()?>')" type="button" class="scalable">Go to my DataFeedWatch</button>
+<?php
+}
+?>
