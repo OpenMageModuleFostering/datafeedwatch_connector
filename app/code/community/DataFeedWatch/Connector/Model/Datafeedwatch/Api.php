@@ -33,7 +33,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
     public function version()
     {
-        return Mage::getConfig()->getNode('modules/DataFeedWatch_Connector')->version;
+        return (string)Mage::getConfig()->getNode('modules/DataFeedWatch_Connector')->version;
     }
 
     public function product_count($options = array())
@@ -87,7 +87,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
     public function products($options = array())
     {
-
+        $mageObject = new Mage;
         $this->_versionInfo = Mage::getVersionInfo();
 
 
@@ -213,7 +213,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
                     $parent_sku = $parent_product->getSku();
 
                     //parent_url
-                    if (method_exists(Mage, 'getEdition') && Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise) {
+                    if (method_exists($mageObject, 'getEdition') && Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise) {
                         $parent_url = $parent_product->getProductUrl();
                     } else {
                         $parent_url = $baseUrl . $parent_product->getUrlPath();
@@ -224,7 +224,8 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
             $product_result = array( // Basic product data
                 'product_id' => $product->getId(),
-                'sku' => $product->getSku()
+                'sku' => $product->getSku(),
+                'product_type' => $product->getTypeId()
             );
 
             $product_result['parent_id'] = $parent_id;
@@ -254,7 +255,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             }
 
 
-            if (method_exists(Mage, 'getEdition') && Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise) {
+            if (method_exists($mageObject, 'getEdition') && Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise) {
                 $product_result['product_url'] = $product->getProductUrl();
             } else {
                 $product_result['product_url'] = $baseUrl . $product->getUrlPath();
@@ -417,7 +418,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
     private function getDisplayPrice($product_id)
     {
-
+        $mageObject = new Mage;
         if (!$product_id) {
             return 0;
         }
@@ -453,11 +454,11 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
 
         $prices['description'] = $product->getDescription();
         $prices['short_description'] = $product->getShortDescription();
-        $prices['short_description'] = $product->getShortDescription();
+
 
         $baseUrl = Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB);
 
-        if (method_exists(Mage, 'getEdition') && Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise) {
+        if (method_exists($mageObject, 'getEdition') && Mage::getEdition() == Mage::EDITION_ENTERPRISE && Mage::getVersionInfo() >= $this->_supportedEnterprise) {
             $product_result['product_url'] = $product->getProductUrl();
         } else {
             $product_result['product_url'] = $baseUrl . $product->getUrlPath();
