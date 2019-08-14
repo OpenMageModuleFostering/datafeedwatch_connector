@@ -2,18 +2,18 @@
 <config>
     <modules>
         <DataFeedWatch_Connector>
-            <version>0.2.8</version>
+            <version>0.2.9</version>
         </DataFeedWatch_Connector>
     </modules>
     <frontend>
         <routers>
-            <connector>
+            <token>
                 <use>standard</use>
                 <args>
                     <module>DataFeedWatch_Connector</module>
-                    <frontName>connector</frontName>
+                    <frontName>datafeedwatch</frontName>
                 </args>
-            </connector>
+            </token>
         </routers>
     </frontend>
     <admin>
@@ -64,6 +64,11 @@
             <connector>
                 <class>DataFeedWatch_Connector_Model</class>
             </connector>
+            <api>
+                <rewrite>
+                    <user>DataFeedWatch_Connector_Model_Api_User</user>
+                </rewrite>
+            </api>
         </models>
         <helpers>
             <connector>
@@ -80,9 +85,6 @@
                 <setup>
                     <module>DataFeedWatch_Connector</module>
                 </setup>
-                <connection>
-                    <use>core_setup</use>
-                </connection>
             </datafeedwatch_connector_setup>
         </resources>
     </global>

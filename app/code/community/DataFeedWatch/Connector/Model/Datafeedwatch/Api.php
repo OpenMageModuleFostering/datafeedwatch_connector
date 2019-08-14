@@ -30,7 +30,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
     }
 
     public function version() {
-        return "0.2.8";  // this needs to be updated in etc/config.xml as well
+        return "0.2.9";  // this needs to be updated in etc/config.xml as well
     }
 
     public function product_count($options = array()) {
@@ -160,7 +160,7 @@ class DataFeedWatch_Connector_Model_Datafeedwatch_Api extends Mage_Catalog_Model
             } else {
                 $product = Mage::getModel('catalog/product')->load($product->getId());
             }
-            $parent_id = '0';
+            $parent_id = null;
             $configrable = false;
 
             if ($product->getTypeId() == "simple") {

@@ -4,11 +4,12 @@
 <?php
 if ($user->isObjectNew()) {
 ?>
-<button onclick="setLocation('<?php echo $this->getCreateUserUrl()?>')" type="button" class="scalable">Go to my DataFeedWatch</button>
+<button onclick="setLocation('<?php echo $this->getCreateUserUrl()?>')" type="button" class="scalable">Create my DataFeedWatch Token </button>
 <?php
 } else {
 ?>
-<button onclick="setLocation('<?php echo $this->getUpdateTokenUrl()?>')" type="button" class="scalable">Go to my DataFeedWatch</button>
+<button onclick="setLocation('<?php echo $this->getUpdateTokenUrl()?>')" type="button" class="scalable">Regenerate my DataFeedWatch Access Token</button>
 <?php
 }
 ?>
+<button onclick="setLocation('<?php echo $this->getRedirectUrl()?>')" type="button" class="scalable">Go to my DataFeedWatch</button>

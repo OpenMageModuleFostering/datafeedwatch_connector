@@ -5,6 +5,7 @@ class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_
 	protected $lastname = 'DataFeedWatch';
 	protected $email = 'magento@datafeedwatch.com';
 	protected $register_url = 'https://my.datafeedwatch.com/platforms/magento/sessions/finalize';
+    protected $redirect_url = 'https://my.datafeedwatch.com/';
 
 	public function indexAction() {
 		$this->loadLayout();
@@ -20,8 +21,8 @@ class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_
 			'firstname' => $this->firstname,
 			'lastname' => $this->lastname,
 			'email' => $this->email,
-			'api_key' => $api_key,
-			'api_key_confirmation' => $api_key,
+			'api_key' => '',
+			'api_key_confirmation' => '',
 			'is_active' => 1
 		);
 
@@ -50,13 +51,27 @@ class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_
 		$user->setRoleId($role->getId())->setUserId($user->getId());
 		$user->add();
 
-		$this->getResponse()->setRedirect($this->_registerUrl($api_key));
+        //add new hash
+        $user = Mage::getModel('api/user')->load($user->getUserId());
+        $hash = md5($user->getEmail().$user->getCreated());
+        $user->setDfwConnectHash($hash);
+        $user->save();
+        Mage::log($user->getData());
+
+        $this->getResponse()->setRedirect($this->_registerUrl($api_key,$user->getData('dfw_connect_hash')));
 		return;
 	}
+
+    public function redirectAction(){
+        $this->getResponse()->setRedirect($this->redirect_url);
+        return;
+    }
 
 	public function updatetokenAction() {
 		$api_key = $this->_generateApiKey();
 		$model = $this->getUser();
+
+        $hash = $model->getDfwConnectHash();
 
 		$data = array(
 			'user_id' => $model->getId(),
@@ -64,14 +79,14 @@ class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_
 			'firstname' => $this->firstname,
 			'lastname' => $this->lastname,
 			'email' => $this->email,
-			'api_key' => $api_key,
-			'api_key_confirmation' => $api_key
+			'api_key' => '',
+			'api_key_confirmation' => ''
 		);
 
-		$model->setData($data);
+        $model->setData($data);
 		$model->save();
 
-		$this->getResponse()->setRedirect($this->_registerUrl($api_key));
+		$this->getResponse()->setRedirect($this->_registerUrl($api_key,$hash));
 		return;
 	}
 
@@ -84,7 +99,8 @@ class DataFeedWatch_Connector_Adminhtml_ConnectorbackendController extends Mage_
 		return sha1(time()+substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 32));
 	}
 
-	private function _registerUrl($api_key) {
-		return $this->register_url.'?shop='.Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB).'&token='.$api_key;
+	private function _registerUrl($api_key,$hash) {
+
+		return $this->register_url.'?shop='.Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB).'&token='.$api_key.'&hash='.$hash;
 	}
 }

@@ -20,4 +20,8 @@ class DataFeedWatch_Connector_Block_Adminhtml_Connectorbackend extends Mage_Admi
                 $model = Mage::getModel('api/user');
                 return $model->load($this->email, 'email');
         }
+
+    public function getRedirectUrl() {
+        return $this->getUrl('*/*/redirect');
+    }
 }
