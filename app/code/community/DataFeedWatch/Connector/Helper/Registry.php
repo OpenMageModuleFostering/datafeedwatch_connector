@@ -10,6 +10,7 @@ class DataFeedWatch_Connector_Helper_Registry
     const DFW_STATUS_ATTRIBUTE_KEY      = 'dfw_status_attribute';
     const DFW_UPDATED_AT_ATTRIBUTE_KEY  = 'dfw_updated_at_attribute';
     const DFW_VISIBILITY_ATTRIBUTE_KEY  = 'dfw_visibility_at_attribute';
+    const DFW_PARENT_ID_ATTRIBUTE_KEY   = 'dfw_parent_id_attribute';
 
     /**
      * @param string $storeId
@@ -20,6 +21,7 @@ class DataFeedWatch_Connector_Helper_Registry
         $this->registerStatusAttribute();
         $this->registerUpdatedAtAttribute();
         $this->registerVisibilityAttribute();
+        $this->registerParentIdAttribute();
         $this->registerSuperAttributes();
         $this->registerInheritableAttributes();
         $this->registerAttributeCollection();
@@ -34,7 +36,7 @@ class DataFeedWatch_Connector_Helper_Registry
             $categories = Mage::getResourceModel('catalog/category_collection')
                 ->addNameToResult()
                 ->setStoreId($storeId)
-                ->addFieldToFilter('level', array('gt' => 0))
+                ->addFieldToFilter('level', array('gt' => 1))
                 ->getItems();
 
             Mage::register(self::ALL_CATEGORIES_ARRAY_KEY, $categories);
@@ -121,6 +123,18 @@ class DataFeedWatch_Connector_Helper_Registry
         }
     }
 
+    protected function registerParentIdAttribute()
+    {
+        $registry = Mage::registry(self::DFW_PARENT_ID_ATTRIBUTE_KEY);
+        if (empty($registry)) {
+            /** @var Mage_Catalog_Model_Resource_Eav_Attribute $statusAttribute */
+            $attribute = Mage::getResourceModel('catalog/product_attribute_collection')
+                ->addVisibleFilter()
+                ->addFieldToFilter('attribute_code', 'dfw_parent_ids')->getFirstItem();
+            Mage::register(self::DFW_PARENT_ID_ATTRIBUTE_KEY, $attribute);
+        }
+    }
+
     /**
      * @return bool
      */
@@ -135,7 +149,7 @@ class DataFeedWatch_Connector_Helper_Registry
      */
     public function isAttributeInheritable($attribute)
     {
-        return in_array($attribute->getDfwInheritance(),
+        return in_array($attribute->getInheritance(),
             array(
                 (string) DataFeedWatch_Connector_Model_System_Config_Source_Inheritance::PARENT_OPTION_ID,
                 (string) DataFeedWatch_Connector_Model_System_Config_Source_Inheritance::CHILD_THEN_PARENT_OPTION_ID,

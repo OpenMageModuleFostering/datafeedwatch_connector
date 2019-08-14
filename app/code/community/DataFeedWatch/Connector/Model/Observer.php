@@ -17,8 +17,8 @@ class DataFeedWatch_Connector_Model_Observer
             'values'    => Mage::getModel('adminhtml/system_config_source_yesno')->toOptionArray(),
             'disabled'  => $attribute->hasCanConfigureImport() && !$attribute->getCanConfigureImport(),
         ), 'is_configurable');
-        $fieldset->addField('dfw_inheritance', 'select', array(
-            'name'      => 'dfw_inheritance',
+        $fieldset->addField('inheritance', 'select', array(
+            'name'      => 'inheritance',
             'label'     => Mage::helper('datafeedwatch_connector')->__('DataFeedWatch Inheritance'),
             'values'    => Mage::getModel('datafeedwatch_connector/system_config_source_inheritance')->toOptionArray(),
             'disabled'  => $attribute->hasCanConfigureImport() && !$attribute->getCanConfigureInheritance(),
@@ -56,84 +56,6 @@ class DataFeedWatch_Connector_Model_Observer
      * @param Varien_Event_Observer $observer
      * @return $this
      */
-    public function saveInheritanceInAttribute(Varien_Event_Observer $observer)
-    {
-        $attribute = $observer->getAttribute();
-        if ($this->isProductEntityType($attribute)) {
-            Mage::getModel('datafeedwatch_connector/catalog_attribute_info')
-                ->setCatalogAttributeId($attribute->getAttributeId())
-                ->setInheritance($attribute->getDfwInheritance())
-                ->setImportToDfw($attribute->getImportToDfw())
-                ->save();
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param Varien_Event_Observer $observer
-     * @return $this
-     */
-    public function deleteAttribute(Varien_Event_Observer $observer)
-    {
-        $attribute = $observer->getAttribute();
-        $attributeInfo = Mage::getModel('datafeedwatch_connector/catalog_attribute_info')
-            ->loadByAttributeId($attribute->getId());
-        if ($attributeInfo instanceof Mage_Core_Model_Abstract && $attributeInfo->hasCatalogAttributeId()) {
-            $attributeInfo->delete();
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param Varien_Event_Observer $observer
-     * @return $this
-     */
-    public function getInheritanceForAttribute(Varien_Event_Observer $observer)
-    {
-        $attribute = $observer->getAttribute();
-        if ($this->isProductEntityType($attribute)) {
-            $attributeInfo = Mage::getModel('datafeedwatch_connector/catalog_attribute_info')
-                ->loadByAttributeId($attribute->getId());
-            $attribute->setCanConfigureInheritance($attributeInfo->getCanConfigureInheritance())
-                ->setDfwInheritance($attributeInfo->getInheritance())
-                ->setCanConfigureImport($attributeInfo->getCanConfigureImport())
-                ->setImportToDfw($attributeInfo->getImportToDfw());
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param Varien_Event_Observer $observer
-     * @return $this
-     */
-    public function getInheritanceForAttributeCollection(Varien_Event_Observer $observer)
-    {
-        $collection     = $observer->getCollection();
-        $newItemObject  = $collection->getNewEmptyItem();
-        if ($newItemObject instanceof Mage_Catalog_Model_Resource_Eav_Attribute) {
-            $collection->getSelect()->joinLeft(
-                array('catalog_attribute_info' => Mage::getModel('core/resource')
-                                                    ->getTableName('datafeedwatch_connector/catalog_attribute_info')),
-                'catalog_attribute_info.catalog_attribute_id = main_table.attribute_id',
-                array(
-                    'dfw_inheritance'           => 'inheritance',
-                    'import_to_dfw'             => 'import_to_dfw',
-                    'can_configure_import'      => 'can_configure_import',
-                    'can_configure_inheritance' => 'can_configure_inheritance',
-                )
-            );
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param Varien_Event_Observer $observer
-     * @return $this
-     */
     public function removeProductFromUpdatedTable(Varien_Event_Observer $observer)
     {
         /** @var Mage_Catalog_Model_Product $product */
@@ -141,7 +63,7 @@ class DataFeedWatch_Connector_Model_Observer
         $resource       = Mage::getSingleton('core/resource');
         $connection     = $resource->getConnection('core_write');
         $connection->delete(Mage::getModel('core/resource')->getTableName('datafeedwatch_connector/updated_products'),
-            sprintf('product_id = %s', $product->getId()));
+            sprintf('dfw_prod_id = %s', $product->getId()));
 
         return $this;
     }
@@ -187,12 +109,80 @@ class DataFeedWatch_Connector_Model_Observer
         }
 
         try {
-            return $configModel->getGroups()[reset($xpath)]['fields'][end($xpath)]['value'];
+            $group = reset($xpath);
+            $field = end($xpath);
+            $configPath = $configModel->getGroups();
+            if (is_array($configPath) && array_key_exists($group, $configPath)) {
+                $configPath = $configPath[$group];
+            } else {
+                return null;
+            }
+            if (is_array($configPath) && array_key_exists('fields', $configPath)) {
+                $configPath = $configPath['fields'];
+            } else {
+                return null;
+            }
+            if (is_array($configPath) && array_key_exists($field, $configPath)) {
+                $configPath = $configPath[$field];
+            } else {
+                return null;
+            }
+
+            if (is_array($configPath) && array_key_exists('value', $configPath)) {
+                return $configPath['value'];
+            } else {
+                return null;
+            }
         } catch (Exception $e) {
             $this->helper()->log($e->getMessage());
 
             return null;
         }
+    }
+
+    public function checkAndUpdateAttributeInheritance(Varien_Event_Observer $observer)
+    {
+        $attribute = $observer->getAttribute();
+        if (!$attribute->getCanConfigureImport() && !$attribute->isObjectNew()) {
+            $attribute->setImportToDfw($attribute->getOrigData('import_to_dfw'));
+        }
+        if ($attribute->hasCanConfigureInheritance() && !$attribute->getCanConfigureInheritance() && !$attribute->isObjectNew()) {
+            $attribute->setInheritance($attribute->getOrigData('inheritance'));
+        }
+
+        if ($this->canSaveUpdateDate($attribute)) {
+            $this->helper()->updateLastInheritanceUpdateDate();
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param $attribute
+     *
+     * @return bool
+     */
+    protected function canSaveUpdateDate($attribute)
+    {
+        return ($attribute->dataHasChangedFor('inheritance') && (int)$attribute->getOrigData('import_to_dfw') === 1)
+               || $attribute->dataHasChangedFor('import_to_dfw')
+               || (int)$attribute->getData('import_to_dfw') === 1
+               || $attribute->isObjectNew();
+    }
+
+    public function changeChildProductUpdatedAt(Varien_Event_Observer $observer)
+    {
+        /** @var Mage_Catalog_Model_Product $product */
+        $product = $observer->getProduct();
+
+        if ($product->isConfigurable()) {
+            $childProducts = $product->getTypeInstance(true)->getUsedProducts(null, $product);
+            foreach ($childProducts as $child) {
+                $child->setUpdatedAt($product->getUpdatedAt())->save();
+            }
+        }
+
+        return $this;
     }
 
     /**

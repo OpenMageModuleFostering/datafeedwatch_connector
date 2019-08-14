@@ -41,7 +41,7 @@ class DataFeedWatch_Connector_Model_Product
         $this->importData['image_url']                  = $this->getBaseImageUrl();
         $this->importData['product_url']                = $this->getProductUrl();
         $this->importData['product_url_rewritten']      = $this->getProductUrlRewritten();
-
+        $this->importData['is_in_stock']                = (int) $this->getIsInStock();
         $this->getCategoryPathToImport();
         $this->setDataToImport($this->getCategoriesNameToImport(false));
 
@@ -101,11 +101,11 @@ class DataFeedWatch_Connector_Model_Product
      */
     protected function fillAllAttributesData()
     {
+        $productAttributes = array_keys($this->getAttributes());
         $attributeCollection = Mage::registry(DataFeedWatch_Connector_Helper_Registry::ALL_IMPORTABLE_ATTRIBUTES_KEY);
         foreach ($attributeCollection as $attribute) {
             $attributeCode = $attribute->getAttributeCode();
-            $data = $this->getData($attributeCode);
-            if (empty($attributeCode) || !$this->hasData($attributeCode) || empty($data)) {
+            if (empty($attributeCode) || !in_array($attributeCode, $productAttributes)) {
                 continue;
             }
             $value = $attribute->getFrontend()->getValue($this);
@@ -357,7 +357,7 @@ class DataFeedWatch_Connector_Model_Product
         $allAttributes = Mage::registry(DataFeedWatch_Connector_Helper_Registry::ALL_ATTRIBUTE_COLLECTION_KEY);
         foreach ($allAttributes as $attribute) {
             $attributeCode = $attribute->getAttributeCode();
-            switch ($attribute->getDfwInheritance()) {
+            switch ($attribute->getInheritance()) {
                 case (string) DataFeedWatch_Connector_Model_System_Config_Source_Inheritance::CHILD_THEN_PARENT_OPTION_ID:
                     $productData = $this->getData($attributeCode);
                     if (empty($productData) || $this->shouldChangeVisibilityForProduct($attribute)) {

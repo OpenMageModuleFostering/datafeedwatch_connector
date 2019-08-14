@@ -166,6 +166,7 @@ class DataFeedWatch_Connector_Helper_Data
             'sku',
             'updated_at',
             'ignore_datafeedwatch',
+            'dfw_parent_ids',
         );
 
         $cannotConfigureInheritanceField = array(
@@ -180,6 +181,7 @@ class DataFeedWatch_Connector_Helper_Data
             'thumbnail',
             'updated_at',
             'ignore_datafeedwatch',
+            'dfw_parent_ids',
         );
 
         $enableImport = array(
@@ -198,14 +200,26 @@ class DataFeedWatch_Connector_Helper_Data
             'special_from_date',
             'special_to_date',
             'updated_at',
+            'color',
+            'size',
+            'gender',
+            'manufacturer',
+            'material',
         );
 
         $inheritanceData = array(
             'updated_at'            => DataFeedWatch_Connector_Model_System_Config_Source_Inheritance::PARENT_OPTION_ID,
             'ignore_datafeedwatch'  => DataFeedWatch_Connector_Model_System_Config_Source_Inheritance::CHILD_OPTION_ID,
+            'dfw_parent_ids'        => DataFeedWatch_Connector_Model_System_Config_Source_Inheritance::CHILD_OPTION_ID,
+            'status'                => DataFeedWatch_Connector_Model_System_Config_Source_Inheritance::CHILD_THEN_PARENT_OPTION_ID,
         );
 
-        Mage::getResourceModel('datafeedwatch_connector/catalog_attribute_info_collection')->walk('delete');
+        $catalogAttributes = Mage::getResourceModel('catalog/product_attribute_collection');
+        $catalogAttributes->setDataToAll('can_configure_inheritance', null);
+        $catalogAttributes->setDataToAll('inheritance', null);
+        $catalogAttributes->setDataToAll('can_configure_import', null);
+        $catalogAttributes->setDataToAll('import_to_dfw', null);
+        $catalogAttributes->save();
 
         $attributes = Mage::getResourceModel('catalog/product_attribute_collection')->addVisibleFilter();
         foreach ($attributes as $attribute) {
@@ -214,9 +228,7 @@ class DataFeedWatch_Connector_Helper_Data
             if (array_key_exists($attributeCode, $inheritanceData)) {
                 $inheritance = $inheritanceData[$attributeCode];
             }
-            Mage::getModel('datafeedwatch_connector/catalog_attribute_info')
-                ->setCatalogAttributeId($attribute->getId())
-                ->setImportToDfw(in_array($attributeCode, $enableImport))
+            $attribute->setImportToDfw(in_array($attributeCode, $enableImport))
                 ->setCanConfigureImport(!in_array($attributeCode, $cannotConfigureImportField))
                 ->setCanConfigureInheritance(!in_array($attributeCode, $cannotConfigureInheritanceField))
                 ->setInheritance($inheritance)
