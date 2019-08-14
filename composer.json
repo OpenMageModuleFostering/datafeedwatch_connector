@@ -1,13 +1,13 @@
 {
     "name": "OpenMageModuleFostering/DataFeedWatch_Connector",
     "type": "magento-module",
-    "license": "GPL",
+    "license": "OSL-v3.0",
     "homepage": "",
-    "description": "DataFeedWatch",
+    "description": "DataFeedWatch extension for Magento",
     "authors": [
     {
         "name": "DataFeedWatch",
-        "email": "support@datafeedwatch.com"
+        "email": "adeel.developer@gmail.com"
     }
 ],
     "suggest": {
