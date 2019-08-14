@@ -1,19 +1,19 @@
 <?xml version="1.0"?>
 <package>
     <name>DataFeedWatch_Connector</name>
-    <version>0.2.1</version>
+    <version>0.2.11</version>
     <stability>stable</stability>
     <license uri="http://opensource.org/licenses/osl-3.0.php">OSL v3.0</license>
     <channel>community</channel>
     <extends/>
     <summary>DataFeedWatch extension for Magento</summary>
-    <description>DataFeedWatch enables Magento shops to optimize their product data&#xD;
-feed for Google Shopping and other channels</description>
-    <notes>DataFeedWatch Release version 0.2.1</notes>
+    <description>DataFeedWatch enables Magento shops to optimize their product datafeed for Google Shopping and other channels&#xD;
+    </description>
+    <notes>DataFeedWatch Release version 0.2.11</notes>
     <authors><author><name>DataFeedWatch</name><user>Adeel</user><email>adeel.developer@gmail.com</email></author></authors>
-    <date>2013-08-28</date>
-    <time>15:01:43</time>
-    <contents><target name="magelocal"><dir name="DataFeedWatch"><dir name="Connector"><dir name="Block"><dir name="Adminhtml"><file name="Connectorbackend.php" hash="afe5bd4888768229d5b668f466b770b5"/></dir></dir><dir name="Helper"><file name="Data.php" hash="983d7ad023616b365dce180680e4f9f0"/></dir><dir name="Model"><dir name="Datafeedwatch"><file name="Api.php" hash="200c1a25c2d2044d85298bb38fbbd496"/></dir></dir><dir name="controllers"><dir name="Adminhtml"><file name="ConnectorbackendController.php" hash="dfa561302ef7eebe656b229fe275a2eb"/></dir></dir><dir name="etc"><file name="api.xml" hash="84e8b97ba0dc25154ff62126640de989"/><file name="config.xml" hash="4ca59e39352913dab25d01df069b62f3"/><file name="system.xml" hash="ab5e8d56d032ba69c930ab7879484212"/></dir></dir></dir></target><target name="magedesign"><dir name="adminhtml"><dir name="default"><dir name="default"><dir name="layout"><file name="connector.xml" hash="14d59b8e9f66fba5d7c1f8d0f62dfc3c"/></dir><dir name="template"><dir name="connector"><file name="connectorbackend.phtml" hash="87fbcd16a96af52ce352bc45d9aeab4a"/></dir></dir></dir></dir></dir></target><target name="mageetc"><dir name="modules"><file name="DataFeedWatch_Connector.xml" hash="d4ef6cebcefd37d5f0546eca344941eb"/></dir></target></contents>
+    <date>2014-07-08</date>
+    <time>17:41:26</time>
+    <contents><target name="magecommunity"><dir name="DataFeedWatch"><dir name="Connector"><dir name="Block"><dir name="Adminhtml"><file name="Connectorbackend.php" hash="7d6af1cb6dd7df3799928fe073f5576b"/></dir></dir><dir name="controllers"><dir name="Adminhtml"><file name="ConnectorbackendController.php" hash="2da89bd06938584f9eafeac98e4a99ef"/></dir><dir><dir name="Adminhtml"><file name="ConnectorbackendController.php" hash="2da89bd06938584f9eafeac98e4a99ef"/></dir></dir><file name="TokenController.php" hash="573ca81b110e79bc3893ac298b2aa02b"/></dir><dir name="etc"><file name="api.xml" hash="eb6eecef3f0922b809f2701aed29325d"/><file name="config.xml" hash="b0ef68502ddcdf726375d74edd199311"/><file name="system.xml" hash="ab5e8d56d032ba69c930ab7879484212"/></dir><dir name="Helper"><file name="Data.php" hash="85269d06206056aeff2fb2c25938ff9c"/></dir><dir name="Model"><dir name="Api"><file name="User.php" hash="734f274e07ca62ecf04dbefecd316330"/></dir><dir name="Datafeedwatch"><file name="Api.php" hash="d1c89b7352d52b07350b6cfbc0903043"/></dir></dir><dir name="sql"><dir><dir name="datafeedwatch_connector_setup"><file name="install-0.2.9.php" hash="326a2968b7af5a987604f880ed7c4a3c"/><file name="upgrade-0.2.10-0.2.11.php" hash="9dcefa5cafd7efd8f192af4d9c1f0c2e"/><file name="upgrade-0.2.9-0.2.10.php" hash="c9e575e9925df8440eca5aa817c1d5e4"/></dir></dir></dir></dir></dir></target><target name="magedesign"><dir name="adminhtml"><dir name="default"><dir name="default"><dir name="layout"><file name="connector.xml" hash="14d59b8e9f66fba5d7c1f8d0f62dfc3c"/></dir><dir name="template"><dir name="connector"><file name="connectorbackend.phtml" hash="43e0e0c8ee28090aa098b7d7c7a979ad"/></dir></dir></dir></dir></dir></target><target name="mageetc"><dir name="modules"><file name="DataFeedWatch_Connector.xml" hash="658a7b36ae7eb5915f40993a191aaa13"/></dir></target></contents>
     <compatible/>
     <dependencies><required><php><min>5.1.0</min><max>6.0.0</max></php></required></dependencies>
 </package>

@@ -12,12 +12,12 @@ class DataFeedWatch_Connector_Block_Adminhtml_Connectorbackend extends Mage_Admi
 		return $this->getUrl('*/*/createuser');
 	}
 
-	public function getUpdateTokenUrl() {
-		return $this->getUrl('*/*/updatetoken');
-	}
+    public function getUser() {
+        $model = Mage::getModel('api/user');
+        return $model->load($this->email, 'email');
+    }
 
-        public function getUser() {     
-                $model = Mage::getModel('api/user');
-                return $model->load($this->email, 'email');
-        }
+    public function getRedirectUrl() {
+        return $this->getUrl('*/*/redirect');
+    }
 }

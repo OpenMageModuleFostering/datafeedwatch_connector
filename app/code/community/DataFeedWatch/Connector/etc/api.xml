@@ -15,12 +15,11 @@
 					<product_count translate="title" module="connector">
 						<title>Retrieve product count</title>
 					</product_count>
+                    <stores translate="title" module="connector">
+                        <title>Retrieve stores</title>
+                    </stores>
 				</methods>
 			</datafeedwatch>
 		</resources>
-
-		<!--<resources_alias>-->
-		<!--<product>catalog_product</product>-->
-		<!--</resources_alias>-->
 	</api>
 </config>
