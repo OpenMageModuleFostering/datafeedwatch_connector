@@ -1,16 +1,19 @@
 {
-    "name": "OpenMageModuleFostering/DataFeedWatch_Connector",
+    "name": "OpenMageModuleFostering\/DataFeedWatch_Connector",
     "type": "magento-module",
     "license": "OSL-v3.0",
     "homepage": "",
     "description": "DataFeedWatch extension for Magento",
     "authors": [
-    {
-        "name": "DataFeedWatch",
-        "email": "support@datafeedwatch.com"
-    }
-],
+        {
+            "name": "DataFeedWatch",
+            "email": "support@datafeedwatch.com"
+        }
+    ],
     "suggest": {
-        "magento-hackathon/magento-composer-installer": "*"
-    }
+        "magento-hackathon\/magento-composer-installer": "*"
+    },
+    "keywords": [
+        "openmage-module"
+    ]
 }
